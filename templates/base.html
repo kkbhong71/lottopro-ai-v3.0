@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LottoPro-AI v3.0 - 차세대 AI 로또 예측{% endblock %}</title>
+    
+    <!-- PWA 메타 태그 -->
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- 폰트 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link href="/static/css/style.css" rel="stylesheet">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="antialiased">
+    <!-- 배경 그라데이션 -->
+    <div class="fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 -z-10"></div>
+    <div class="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="1.5"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] -z-10"></div>
+    
+    <!-- 네비게이션 -->
+    <nav class="backdrop-blur-md bg-white/5 border-b border-white/10 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 로고 -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-400 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-magic text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            LottoPro-AI
+                        </h1>
+                        <div class="text-xs text-purple-300 font-medium">v3.0</div>
+                    </div>
+                </div>
+                
+                <!-- 메뉴 -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="/" class="nav-link"><i class="fas fa-home mr-2"></i>홈</a>
+                    <a href="/algorithms" class="nav-link"><i class="fas fa-brain mr-2"></i>알고리즘</a>
+                    <a href="/saved-numbers" class="nav-link"><i class="fas fa-save mr-2"></i>저장된 번호</a>
+                    <a href="/compare" class="nav-link"><i class="fas fa-chart-bar mr-2"></i>결과 비교</a>
+                </div>
+                
+                <!-- 다크모드 토글 & 모바일 메뉴 -->
+                <div class="flex items-center space-x-3">
+                    <button id="theme-toggle" class="icon-btn">
+                        <i class="fas fa-moon" id="theme-icon"></i>
+                    </button>
+                    <button id="mobile-menu-btn" class="icon-btn md:hidden">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 모바일 메뉴 -->
+        <div id="mobile-menu" class="hidden md:hidden backdrop-blur-md bg-white/5 border-t border-white/10">
+            <div class="px-4 py-3 space-y-2">
+                <a href="/" class="mobile-nav-link"><i class="fas fa-home mr-3"></i>홈</a>
+                <a href="/algorithms" class="mobile-nav-link"><i class="fas fa-brain mr-3"></i>알고리즘</a>
+                <a href="/saved-numbers" class="mobile-nav-link"><i class="fas fa-save mr-3"></i>저장된 번호</a>
+                <a href="/compare" class="mobile-nav-link"><i class="fas fa-chart-bar mr-3"></i>결과 비교</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- 메인 컨텐츠 -->
+    <main class="min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- 푸터 -->
+    <footer class="backdrop-blur-md bg-white/5 border-t border-white/10 mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-400 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-magic text-white"></i>
+                    </div>
+                    <span class="text-lg font-semibold text-white">LottoPro-AI v3.0</span>
+                </div>
+                <p class="text-purple-300 text-sm mb-4">
+                    차세대 AI 기술로 만든 최고의 로또 예측 시스템
+                </p>
+                <div class="flex justify-center space-x-6 text-sm text-purple-400">
+                    <span><i class="fas fa-github mr-1"></i>GitHub 연동</span>
+                    <span><i class="fas fa-robot mr-1"></i>8가지 AI 모델</span>
+                    <span><i class="fas fa-chart-line mr-1"></i>실시간 분석</span>
+                </div>
+                <div class="mt-4 text-xs text-purple-500">
+                    © 2025 LottoPro-AI. 모든 권리 보유.
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- 플로팅 액션 버튼 -->
+    <div class="fixed bottom-6 right-6 z-40">
+        <button id="floating-btn" class="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 flex items-center justify-center">
+            <i class="fas fa-dice text-white text-xl"></i>
+        </button>
+    </div>
+    
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white/10 backdrop-blur-md rounded-2xl p-8 flex flex-col items-center">
+            <div class="spinner mb-4"></div>
+            <p class="text-white font-medium" id="loading-text">AI가 번호를 분석중입니다...</p>
+        </div>
+    </div>
+    
+    <!-- 토스트 알림 -->
+    <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-3"></div>
+    
+    <!-- JavaScript -->
+    <script src="/static/js/main.js"></script>
+    <script src="/static/js/github-api.js"></script>
+    {% block extra_js %}{% endblock %}
+    
+    <!-- 서비스 워커 등록 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+</body>
+</html>
