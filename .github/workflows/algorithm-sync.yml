@@ -1,0 +1,52 @@
+name: Sync Algorithm Repository
+
+on:
+  schedule:
+    # 매일 UTC 00:00 (한국시간 09:00)에 실행
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  sync-algorithms:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout main repo
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Checkout algorithm repo
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ secrets.ALGORITHM_REPO }}
+        token: ${{ secrets.ALGORITHM_REPO_TOKEN }}
+        path: algorithms-repo
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11.7
+        
+    - name: Validate algorithms
+      run: |
+        cd algorithms-repo
+        for dir in super_v1 strongest_universe_v1 ultimate_v*; do
+          if [ -d "$dir" ]; then
+            echo "Validating $dir..."
+            python -m py_compile $dir/algorithm.py
+            echo "✅ $dir validation passed"
+          fi
+        done
+        
+    - name: Update algorithm metadata
+      run: |
+        python scripts/update_algorithm_metadata.py
+        
+    - name: Commit updates
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add algorithms/algorithm_info.json
+        git commit -m "🤖 Auto-update algorithm metadata" || exit 0
+        git push
