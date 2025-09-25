@@ -1,0 +1,1360 @@
+{% extends "base.html" %}
+
+{% block title %}결과 비교 - LottoPro-AI v3.0{% endblock %}
+
+{% block extra_head %}
+<style>
+/* 결과 비교 페이지 전용 스타일 */
+.analysis-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-lg);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.analysis-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 3px;
+    background: var(--gradient-primary);
+    transition: left var(--transition-normal);
+}
+
+.analysis-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl), 0 0 30px rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.analysis-card:hover::before {
+    left: 0;
+}
+
+.chart-container {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin: var(--space-md) 0;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.frequency-chart {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: var(--space-sm);
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.frequency-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.frequency-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: var(--space-xs);
+    transition: all var(--transition-fast);
+}
+
+.frequency-number:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+}
+
+.frequency-bar-visual {
+    width: 8px;
+    background: var(--gradient-primary);
+    border-radius: 4px;
+    margin-bottom: var(--space-xs);
+    transition: all var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.frequency-bar-visual::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: var(--gradient-secondary);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 1s ease-out;
+}
+
+.frequency-bar:hover .frequency-bar-visual::before {
+    transform: scaleY(1);
+}
+
+.frequency-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.hot-number {
+    background: var(--gradient-warning) !important;
+    animation: hotPulse 2s ease-in-out infinite;
+}
+
+.cold-number {
+    background: var(--gradient-accent) !important;
+}
+
+@keyframes hotPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px 0 rgba(251, 191, 36, 0.4);
+    }
+}
+
+.performance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.performance-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    text-align: center;
+    transition: all var(--transition-normal);
+    position: relative;
+}
+
+.performance-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+.performance-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-lg);
+    margin: 0 auto var(--space-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    background: var(--gradient-primary);
+    position: relative;
+    overflow: hidden;
+}
+
+.performance-icon::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transition: all var(--transition-normal);
+    transform: translate(-50%, -50%);
+}
+
+.performance-card:hover .performance-icon::before {
+    width: 100%;
+    height: 100%;
+}
+
+.performance-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.performance-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: var(--space-xs);
+}
+
+.performance-change {
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+}
+
+.performance-change.positive {
+    color: #22c55e;
+}
+
+.performance-change.negative {
+    color: #ef4444;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--glass-bg);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+.comparison-table th,
+.comparison-table td {
+    padding: var(--space-md);
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comparison-table th {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.comparison-table td {
+    color: var(--text-secondary);
+}
+
+.comparison-table tr:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.algorithm-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: var(--space-xs);
+}
+
+.badge-super { background: var(--gradient-warning); color: white; }
+.badge-ultimate { background: var(--gradient-accent); color: white; }
+.badge-strongest { background: var(--gradient-secondary); color: white; }
+
+.accuracy-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: var(--space-xs);
+}
+
+.accuracy-fill {
+    height: 100%;
+    background: var(--gradient-success);
+    border-radius: 4px;
+    transition: width 1s ease-out;
+    position: relative;
+}
+
+.accuracy-fill::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+.trend-chart {
+    height: 200px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    padding: var(--space-md);
+    gap: 2px;
+}
+
+.trend-bar {
+    flex: 1;
+    background: var(--gradient-primary);
+    border-radius: 2px 2px 0 0;
+    transition: all var(--transition-normal);
+    position: relative;
+    min-height: 20px;
+}
+
+.trend-bar:hover {
+    background: var(--gradient-secondary);
+    transform: scaleY(1.1);
+}
+
+.trend-bar::before {
+    content: attr(data-value);
+    position: absolute;
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.trend-bar:hover::before {
+    opacity: 1;
+}
+
+.prediction-timeline {
+    position: relative;
+    padding-left: var(--space-xl);
+}
+
+.timeline-line {
+    position: absolute;
+    left: var(--space-md);
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--gradient-primary);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: var(--space-xl);
+    padding-left: var(--space-xl);
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -8px;
+    top: var(--space-sm);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    border: 3px solid var(--primary-bg);
+    box-shadow: var(--shadow-md);
+}
+
+.timeline-content {
+    background: var(--glass-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    border: 1px solid var(--border-color);
+}
+
+.timeline-date {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: var(--space-xs);
+}
+
+.timeline-prediction {
+    display: flex;
+    gap: var(--space-xs);
+    margin: var(--space-sm) 0;
+}
+
+.timeline-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.filter-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
+    display: flex;
+    gap: var(--space-md);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.filter-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.filter-select,
+.date-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-xs) var(--space-sm);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.filter-select:focus,
+.date-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.insight-panel {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(167, 85, 221, 0.1));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: var(--radius-xl);
+    padding: var(--space-xl);
+    margin-bottom: var(--space-xl);
+    position: relative;
+    overflow: hidden;
+}
+
+.insight-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-primary);
+}
+
+.insight-title {
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.insight-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+}
+
+.insight-recommendations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-md);
+}
+
+.recommendation-item {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    border-left: 3px solid #22c55e;
+}
+
+.recommendation-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: var(--space-xs);
+}
+
+.recommendation-desc {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .performance-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .frequency-chart {
+        grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+    }
+    
+    .filter-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-group {
+        justify-content: space-between;
+    }
+    
+    .comparison-table {
+        font-size: 0.875rem;
+    }
+    
+    .comparison-table th,
+    .comparison-table td {
+        padding: var(--space-sm);
+    }
+    
+    .insight-recommendations {
+        grid-template-columns: 1fr;
+    }
+    
+    .prediction-timeline {
+        padding-left: var(--space-lg);
+    }
+    
+    .timeline-item {
+        padding-left: var(--space-lg);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 헤더 섹션 -->
+<section class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent mb-6">
+                결과 분석
+            </h1>
+            <p class="text-xl text-purple-200 max-w-3xl mx-auto">
+                AI 예측 결과를 <span class="text-pink-300 font-bold">심층 분석</span>하고 패턴을 발견해보세요
+            </p>
+        </div>
+        
+        <!-- 전체 성과 카드 -->
+        <div class="performance-grid">
+            <div class="performance-card">
+                <div class="performance-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="performance-title">전체 정확도</div>
+                <div class="performance-value" id="overall-accuracy">0%</div>
+                <div class="performance-change positive">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>+5.2% 이번 달</span>
+                </div>
+            </div>
+            
+            <div class="performance-card">
+                <div class="performance-icon">
+                    <i class="fas fa-bullseye"></i>
+                </div>
+                <div class="performance-title">최고 적중</div>
+                <div class="performance-value" id="best-match">0</div>
+                <div class="performance-change positive">
+                    <i class="fas fa-medal"></i>
+                    <span>개인 최고</span>
+                </div>
+            </div>
+            
+            <div class="performance-card">
+                <div class="performance-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div class="performance-title">총 예측수</div>
+                <div class="performance-value" id="total-predictions">0</div>
+                <div class="performance-change positive">
+                    <i class="fas fa-plus"></i>
+                    <span>지속 증가</span>
+                </div>
+            </div>
+            
+            <div class="performance-card">
+                <div class="performance-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="performance-title">추천 알고리즘</div>
+                <div class="performance-value" id="best-algorithm">-</div>
+                <div class="performance-change">
+                    <i class="fas fa-crown"></i>
+                    <span>최고 성능</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 분석 메인 콘텐츠 -->
+<section class="pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- 필터 패널 -->
+        <div class="filter-panel">
+            <div class="filter-group">
+                <label class="filter-label">기간:</label>
+                <select id="period-filter" class="filter-select">
+                    <option value="all">전체</option>
+                    <option value="week">최근 1주</option>
+                    <option value="month">최근 1달</option>
+                    <option value="quarter">최근 3달</option>
+                    <option value="year">최근 1년</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">알고리즘:</label>
+                <select id="algorithm-filter" class="filter-select">
+                    <option value="all">전체</option>
+                    <!-- 동적으로 로드됩니다 -->
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">시작일:</label>
+                <input type="date" id="start-date" class="date-input">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">종료일:</label>
+                <input type="date" id="end-date" class="date-input">
+            </div>
+            
+            <button id="apply-filters" class="btn-primary">
+                <i class="fas fa-filter mr-2"></i>필터 적용
+            </button>
+        </div>
+        
+        <!-- AI 인사이트 패널 -->
+        <div class="insight-panel">
+            <div class="insight-title">
+                <i class="fas fa-lightbulb"></i>
+                AI 인사이트
+            </div>
+            <div class="insight-content" id="ai-insights">
+                분석을 위해 데이터를 로딩 중입니다...
+            </div>
+            <div class="insight-recommendations" id="recommendations">
+                <!-- 추천사항이 동적으로 로드됩니다 -->
+            </div>
+        </div>
+        
+        <!-- 번호 빈도 분석 -->
+        <div class="analysis-card">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-chart-bar mr-3"></i>
+                번호 출현 빈도 분석
+            </h2>
+            <p class="text-purple-300 mb-6">
+                예측된 번호들의 출현 빈도를 분석하여 핫넘버와 콜드넘버를 확인해보세요.
+            </p>
+            <div class="chart-container">
+                <div class="frequency-chart" id="frequency-chart">
+                    <!-- 빈도 차트가 동적으로 생성됩니다 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 알고리즘 성능 비교 -->
+        <div class="analysis-card">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-balance-scale mr-3"></i>
+                알고리즘 성능 비교
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="comparison-table" id="algorithm-comparison">
+                    <thead>
+                        <tr>
+                            <th>알고리즘</th>
+                            <th>사용횟수</th>
+                            <th>총 적중수</th>
+                            <th>정확도</th>
+                            <th>최고 적중</th>
+                            <th>평균 실행시간</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- 비교 데이터가 동적으로 로드됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 시간대별 성과 트렌드 -->
+        <div class="analysis-card">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-chart-line mr-3"></i>
+                시간대별 성과 트렌드
+            </h2>
+            <p class="text-purple-300 mb-6">
+                시간의 흐름에 따른 예측 정확도의 변화를 확인해보세요.
+            </p>
+            <div class="chart-container">
+                <div class="trend-chart" id="trend-chart">
+                    <!-- 트렌드 차트가 동적으로 생성됩니다 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 예측 히스토리 타임라인 -->
+        <div class="analysis-card">
+            <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                <i class="fas fa-history mr-3"></i>
+                예측 히스토리
+            </h2>
+            <div class="prediction-timeline" id="prediction-timeline">
+                <div class="timeline-line"></div>
+                <!-- 타임라인 아이템들이 동적으로 로드됩니다 -->
+            </div>
+            
+            <div class="text-center mt-8">
+                <button id="load-more-history" class="btn-outline">
+                    <i class="fas fa-chevron-down mr-2"></i>
+                    더 많은 히스토리 보기
+                </button>
+            </div>
+        </div>
+        
+        <!-- 통계적 분석 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="analysis-card">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <i class="fas fa-calculator mr-3"></i>
+                    통계 요약
+                </h3>
+                <div id="statistical-summary">
+                    <!-- 통계 요약이 동적으로 로드됩니다 -->
+                </div>
+            </div>
+            
+            <div class="analysis-card">
+                <h3 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <i class="fas fa-pattern mr-3"></i>
+                    패턴 분석
+                </h3>
+                <div id="pattern-analysis">
+                    <!-- 패턴 분석이 동적으로 로드됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class ComparisonAnalyzer {
+    constructor() {
+        this.predictions = [];
+        this.filteredPredictions = [];
+        this.algorithms = {};
+        this.currentFilters = {
+            period: 'all',
+            algorithm: 'all',
+            startDate: null,
+            endDate: null
+        };
+        this.init();
+    }
+    
+    async init() {
+        this.setupEventListeners();
+        await this.loadData();
+        await this.performAnalysis();
+        console.log('📊 결과 분석기 초기화 완료');
+    }
+    
+    setupEventListeners() {
+        // 필터 이벤트
+        document.getElementById('apply-filters').addEventListener('click', () => this.applyFilters());
+        document.getElementById('load-more-history').addEventListener('click', () => this.loadMoreHistory());
+        
+        // 필터 변경 감지
+        ['period-filter', 'algorithm-filter'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => this.applyFilters());
+        });
+        
+        // 날짜 필터
+        ['start-date', 'end-date'].forEach(id => {
+            document.getElementById(id).addEventListener('change', () => this.applyFilters());
+        });
+    }
+    
+    async loadData() {
+        try {
+            window.showLoading('분석 데이터를 로드하는 중...');
+            
+            // 사용자 예측 데이터 로드
+            const userResponse = await fetch('/api/user-predictions');
+            const userData = await userResponse.json();
+            this.predictions = userData.predictions || [];
+            
+            // 알고리즘 정보 로드
+            if (window.githubManager && window.githubManager.algorithms) {
+                this.algorithms = window.githubManager.algorithms;
+            }
+            
+            // 알고리즘 필터 옵션 생성
+            this.setupAlgorithmFilter();
+            
+            window.hideLoading();
+            
+        } catch (error) {
+            console.error('데이터 로드 실패:', error);
+            window.showToast('데이터 로드에 실패했습니다', 'error');
+            window.hideLoading();
+        }
+    }
+    
+    setupAlgorithmFilter() {
+        const algorithmFilter = document.getElementById('algorithm-filter');
+        const usedAlgorithms = [...new Set(this.predictions.map(p => p.algorithm))];
+        
+        usedAlgorithms.forEach(algorithmId => {
+            const option = document.createElement('option');
+            option.value = algorithmId;
+            option.textContent = this.getAlgorithmName(algorithmId);
+            algorithmFilter.appendChild(option);
+        });
+    }
+    
+    getAlgorithmName(algorithmId) {
+        if (this.algorithms[algorithmId]) {
+            return this.algorithms[algorithmId].name;
+        }
+        return algorithmId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    applyFilters() {
+        const periodFilter = document.getElementById('period-filter').value;
+        const algorithmFilter = document.getElementById('algorithm-filter').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        this.currentFilters = {
+            period: periodFilter,
+            algorithm: algorithmFilter,
+            startDate: startDate ? new Date(startDate) : null,
+            endDate: endDate ? new Date(endDate) : null
+        };
+        
+        this.filteredPredictions = this.predictions.filter(prediction => {
+            const predDate = new Date(prediction.timestamp);
+            
+            // 기간 필터
+            if (this.currentFilters.period !== 'all') {
+                const now = new Date();
+                let cutoffDate = new Date();
+                
+                switch(this.currentFilters.period) {
+                    case 'week':
+                        cutoffDate.setDate(now.getDate() - 7);
+                        break;
+                    case 'month':
+                        cutoffDate.setMonth(now.getMonth() - 1);
+                        break;
+                    case 'quarter':
+                        cutoffDate.setMonth(now.getMonth() - 3);
+                        break;
+                    case 'year':
+                        cutoffDate.setFullYear(now.getFullYear() - 1);
+                        break;
+                }
+                
+                if (predDate < cutoffDate) return false;
+            }
+            
+            // 알고리즘 필터
+            if (this.currentFilters.algorithm !== 'all' && 
+                prediction.algorithm !== this.currentFilters.algorithm) {
+                return false;
+            }
+            
+            // 날짜 범위 필터
+            if (this.currentFilters.startDate && predDate < this.currentFilters.startDate) {
+                return false;
+            }
+            
+            if (this.currentFilters.endDate && predDate > this.currentFilters.endDate) {
+                return false;
+            }
+            
+            return true;
+        });
+        
+        this.performAnalysis();
+        window.showToast('필터가 적용되었습니다', 'success', 2000);
+    }
+    
+    async performAnalysis() {
+        this.updateOverallStats();
+        this.generateFrequencyChart();
+        this.generateAlgorithmComparison();
+        this.generateTrendChart();
+        this.generatePredictionTimeline();
+        this.generateStatisticalSummary();
+        this.generatePatternAnalysis();
+        this.generateAIInsights();
+    }
+    
+    updateOverallStats() {
+        const checkedPredictions = this.filteredPredictions.filter(p => p.is_checked);
+        const totalMatches = checkedPredictions.reduce((sum, p) => 
+            sum + (p.match_result ? p.match_result.matches : 0), 0);
+        const bestMatch = Math.max(0, ...checkedPredictions.map(p => 
+            p.match_result ? p.match_result.matches : 0));
+        
+        const accuracy = checkedPredictions.length > 0 
+            ? Math.round((totalMatches / (checkedPredictions.length * 6)) * 100)
+            : 0;
+        
+        // 최고 성능 알고리즘 찾기
+        const algorithmStats = this.getAlgorithmStats();
+        const bestAlgorithm = Object.entries(algorithmStats)
+            .sort(([,a], [,b]) => b.accuracy - a.accuracy)[0];
+        
+        document.getElementById('overall-accuracy').textContent = accuracy + '%';
+        document.getElementById('best-match').textContent = bestMatch;
+        document.getElementById('total-predictions').textContent = this.filteredPredictions.length;
+        document.getElementById('best-algorithm').textContent = bestAlgorithm 
+            ? this.getAlgorithmName(bestAlgorithm[0]) 
+            : '-';
+    }
+    
+    generateFrequencyChart() {
+        const frequencyChart = document.getElementById('frequency-chart');
+        const numberFreq = {};
+        
+        // 빈도 계산
+        this.filteredPredictions.forEach(prediction => {
+            prediction.numbers.forEach(num => {
+                numberFreq[num] = (numberFreq[num] || 0) + 1;
+            });
+        });
+        
+        // 1-45까지 모든 번호에 대해 차트 생성
+        frequencyChart.innerHTML = '';
+        
+        const maxFreq = Math.max(...Object.values(numberFreq), 1);
+        const avgFreq = Object.values(numberFreq).reduce((a, b) => a + b, 0) / 45;
+        
+        for (let i = 1; i <= 45; i++) {
+            const freq = numberFreq[i] || 0;
+            const isHot = freq > avgFreq * 1.5;
+            const isCold = freq < avgFreq * 0.5;
+            
+            const barContainer = document.createElement('div');
+            barContainer.className = 'frequency-bar';
+            
+            const number = document.createElement('div');
+            number.className = `frequency-number ${isHot ? 'hot-number' : isCold ? 'cold-number' : ''}`;
+            number.textContent = i;
+            
+            const bar = document.createElement('div');
+            bar.className = 'frequency-bar-visual';
+            const height = Math.max(20, (freq / maxFreq) * 150);
+            bar.style.height = height + 'px';
+            
+            const count = document.createElement('div');
+            count.className = 'frequency-count';
+            count.textContent = freq;
+            
+            barContainer.appendChild(number);
+            barContainer.appendChild(bar);
+            barContainer.appendChild(count);
+            
+            frequencyChart.appendChild(barContainer);
+        }
+    }
+    
+    generateAlgorithmComparison() {
+        const comparisonTable = document.getElementById('algorithm-comparison');
+        const tbody = comparisonTable.querySelector('tbody');
+        tbody.innerHTML = '';
+        
+        const algorithmStats = this.getAlgorithmStats();
+        
+        Object.entries(algorithmStats).forEach(([algorithmId, stats]) => {
+            const row = document.createElement('tr');
+            
+            const algorithmName = this.getAlgorithmName(algorithmId);
+            const badgeClass = this.getAlgorithmBadgeClass(algorithmId);
+            
+            row.innerHTML = `
+                <td>
+                    <div class="flex items-center">
+                        <span class="algorithm-badge ${badgeClass}">${algorithmName}</span>
+                    </div>
+                </td>
+                <td>${stats.count}</td>
+                <td>${stats.totalMatches}</td>
+                <td>
+                    <div>
+                        ${stats.accuracy.toFixed(1)}%
+                        <div class="accuracy-bar">
+                            <div class="accuracy-fill" style="width: ${stats.accuracy}%"></div>
+                        </div>
+                    </div>
+                </td>
+                <td>${stats.bestMatch}</td>
+                <td>${this.getAlgorithmExecutionTime(algorithmId)}</td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+    }
+    
+    getAlgorithmStats() {
+        const stats = {};
+        
+        this.filteredPredictions.forEach(prediction => {
+            const algorithmId = prediction.algorithm;
+            
+            if (!stats[algorithmId]) {
+                stats[algorithmId] = {
+                    count: 0,
+                    totalMatches: 0,
+                    bestMatch: 0,
+                    accuracy: 0
+                };
+            }
+            
+            stats[algorithmId].count++;
+            
+            if (prediction.is_checked && prediction.match_result) {
+                const matches = prediction.match_result.matches;
+                stats[algorithmId].totalMatches += matches;
+                stats[algorithmId].bestMatch = Math.max(stats[algorithmId].bestMatch, matches);
+            }
+        });
+        
+        // 정확도 계산
+        Object.keys(stats).forEach(algorithmId => {
+            const checkedCount = this.filteredPredictions.filter(p => 
+                p.algorithm === algorithmId && p.is_checked).length;
+            
+            if (checkedCount > 0) {
+                stats[algorithmId].accuracy = (stats[algorithmId].totalMatches / (checkedCount * 6)) * 100;
+            }
+        });
+        
+        return stats;
+    }
+    
+    getAlgorithmBadgeClass(algorithmId) {
+        if (algorithmId.includes('super')) return 'badge-super';
+        if (algorithmId.includes('strongest')) return 'badge-strongest';
+        if (algorithmId.includes('ultimate')) return 'badge-ultimate';
+        return 'badge-ultimate';
+    }
+    
+    getAlgorithmExecutionTime(algorithmId) {
+        if (this.algorithms[algorithmId] && this.algorithms[algorithmId].execution_time) {
+            return this.algorithms[algorithmId].execution_time;
+        }
+        return '~2초';
+    }
+    
+    generateTrendChart() {
+        const trendChart = document.getElementById('trend-chart');
+        trendChart.innerHTML = '';
+        
+        // 최근 30일간의 일별 정확도 트렌드
+        const days = 30;
+        const dailyStats = [];
+        const now = new Date();
+        
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - i);
+            
+            const dayPredictions = this.filteredPredictions.filter(p => {
+                const predDate = new Date(p.timestamp);
+                return predDate.toDateString() === date.toDateString();
+            });
+            
+            const checkedPredictions = dayPredictions.filter(p => p.is_checked);
+            const totalMatches = checkedPredictions.reduce((sum, p) => 
+                sum + (p.match_result ? p.match_result.matches : 0), 0);
+            
+            const accuracy = checkedPredictions.length > 0 
+                ? (totalMatches / (checkedPredictions.length * 6)) * 100
+                : 0;
+            
+            dailyStats.push({ date, accuracy, count: dayPredictions.length });
+        }
+        
+        const maxAccuracy = Math.max(...dailyStats.map(s => s.accuracy), 1);
+        
+        dailyStats.forEach(stat => {
+            const bar = document.createElement('div');
+            bar.className = 'trend-bar';
+            const height = Math.max(10, (stat.accuracy / maxAccuracy) * 100);
+            bar.style.height = height + '%';
+            bar.dataset.value = stat.accuracy.toFixed(1) + '%';
+            
+            trendChart.appendChild(bar);
+        });
+    }
+    
+    generatePredictionTimeline() {
+        const timeline = document.getElementById('prediction-timeline');
+        const timelineItems = timeline.querySelectorAll('.timeline-item');
+        
+        // 기존 아이템 제거 (라인 제외)
+        timelineItems.forEach(item => item.remove());
+        
+        // 최근 10개 예측만 표시
+        const recentPredictions = this.filteredPredictions
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+            .slice(0, 10);
+        
+        recentPredictions.forEach(prediction => {
+            const item = document.createElement('div');
+            item.className = 'timeline-item';
+            
+            const date = new Date(prediction.timestamp).toLocaleDateString('ko-KR', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const matchInfo = prediction.is_checked && prediction.match_result
+                ? `<div class="text-sm text-green-400 mt-2">✓ ${prediction.match_result.matches}개 적중</div>`
+                : `<div class="text-sm text-yellow-400 mt-2">⏳ 확인 대기</div>`;
+            
+            item.innerHTML = `
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-date">${date}</div>
+                    <div class="font-medium text-white mb-2">${this.getAlgorithmName(prediction.algorithm)}</div>
+                    <div class="timeline-prediction">
+                        ${prediction.numbers.map(num => `
+                            <div class="timeline-number">${num}</div>
+                        `).join('')}
+                    </div>
+                    ${matchInfo}
+                </div>
+            `;
+            
+            timeline.appendChild(item);
+        });
+    }
+    
+    generateStatisticalSummary() {
+        const container = document.getElementById('statistical-summary');
+        const checkedPredictions = this.filteredPredictions.filter(p => p.is_checked);
+        
+        if (checkedPredictions.length === 0) {
+            container.innerHTML = '<p class="text-purple-300">확인된 예측이 없습니다.</p>';
+            return;
+        }
+        
+        const matches = checkedPredictions.map(p => p.match_result ? p.match_result.matches : 0);
+        const mean = matches.reduce((a, b) => a + b, 0) / matches.length;
+        const variance = matches.reduce((sum, match) => sum + Math.pow(match - mean, 2), 0) / matches.length;
+        const stdDev = Math.sqrt(variance);
+        
+        const distribution = {};
+        matches.forEach(match => {
+            distribution[match] = (distribution[match] || 0) + 1;
+        });
+        
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="flex justify-between">
+                    <span class="text-purple-300">평균 적중수:</span>
+                    <span class="text-white font-bold">${mean.toFixed(2)}개</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-purple-300">표준편차:</span>
+                    <span class="text-white font-bold">${stdDev.toFixed(2)}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-purple-300">최빈값:</span>
+                    <span class="text-white font-bold">${Object.keys(distribution).reduce((a, b) => 
+                        distribution[a] > distribution[b] ? a : b)}개</span>
+                </div>
+                <div class="mt-4">
+                    <div class="text-purple-300 mb-2">적중수별 분포:</div>
+                    <div class="space-y-2">
+                        ${Object.entries(distribution).map(([matches, count]) => `
+                            <div class="flex justify-between text-sm">
+                                <span>${matches}개 적중:</span>
+                                <span>${count}회 (${((count / checkedPredictions.length) * 100).toFixed(1)}%)</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    generatePatternAnalysis() {
+        const container = document.getElementById('pattern-analysis');
+        
+        // 선호하는 번호대 분석
+        const numberRanges = {
+            '1-10': 0, '11-20': 0, '21-30': 0, '31-40': 0, '41-45': 0
+        };
+        
+        this.filteredPredictions.forEach(prediction => {
+            prediction.numbers.forEach(num => {
+                if (num <= 10) numberRanges['1-10']++;
+                else if (num <= 20) numberRanges['11-20']++;
+                else if (num <= 30) numberRanges['21-30']++;
+                else if (num <= 40) numberRanges['31-40']++;
+                else numberRanges['41-45']++;
+            });
+        });
+        
+        const totalNumbers = this.filteredPredictions.length * 6;
+        
+        container.innerHTML = `
+            <div class="space-y-4">
+                <div class="text-purple-300 mb-3">번호대별 선호도:</div>
+                ${Object.entries(numberRanges).map(([range, count]) => {
+                    const percentage = totalNumbers > 0 ? (count / totalNumbers) * 100 : 0;
+                    return `
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">${range}</span>
+                            <div class="flex items-center">
+                                <div class="w-20 h-2 bg-gray-700 rounded mr-2">
+                                    <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded" 
+                                         style="width: ${percentage}%"></div>
+                                </div>
+                                <span class="text-sm text-white">${percentage.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+    
+    generateAIInsights() {
+        const insightsContainer = document.getElementById('ai-insights');
+        const recommendationsContainer = document.getElementById('recommendations');
+        
+        const checkedPredictions = this.filteredPredictions.filter(p => p.is_checked);
+        const algorithmStats = this.getAlgorithmStats();
+        
+        // AI 인사이트 생성
+        let insights = '당신의 예측 패턴을 분석한 결과: ';
+        
+        if (checkedPredictions.length === 0) {
+            insights += '아직 확인된 예측이 없습니다. 예측을 저장하고 당첨번호와 비교해보세요.';
+        } else {
+            const totalMatches = checkedPredictions.reduce((sum, p) => 
+                sum + (p.match_result ? p.match_result.matches : 0), 0);
+            const avgMatches = totalMatches / checkedPredictions.length;
+            
+            if (avgMatches >= 2) {
+                insights += '평균 적중률이 우수합니다! ';
+            } else if (avgMatches >= 1) {
+                insights += '평균적인 적중률을 보이고 있습니다. ';
+            } else {
+                insights += '적중률 향상의 여지가 있습니다. ';
+            }
+            
+            const bestAlgorithm = Object.entries(algorithmStats)
+                .sort(([,a], [,b]) => b.accuracy - a.accuracy)[0];
+                
+            if (bestAlgorithm) {
+                insights += `가장 좋은 성과를 보인 알고리즘은 "${this.getAlgorithmName(bestAlgorithm[0])}"입니다.`;
+            }
+        }
+        
+        insightsContainer.textContent = insights;
+        
+        // 추천사항 생성
+        const recommendations = [];
+        
+        if (Object.keys(algorithmStats).length > 1) {
+            recommendations.push({
+                title: '다양한 알고리즘 시도',
+                desc: '여러 알고리즘을 비교해보면 더 나은 결과를 얻을 수 있습니다.'
+            });
+        }
+        
+        if (this.filteredPredictions.length < 10) {
+            recommendations.push({
+                title: '더 많은 예측 시도',
+                desc: '통계적으로 의미있는 분석을 위해 더 많은 예측을 시도해보세요.'
+            });
+        }
+        
+        const uncheckedCount = this.filteredPredictions.filter(p => !p.is_checked).length;
+        if (uncheckedCount > 0) {
+            recommendations.push({
+                title: '예측 결과 확인',
+                desc: `${uncheckedCount}개의 미확인 예측이 있습니다. 당첨번호와 비교해보세요.`
+            });
+        }
+        
+        recommendationsContainer.innerHTML = recommendations.map(rec => `
+            <div class="recommendation-item">
+                <div class="recommendation-title">${rec.title}</div>
+                <div class="recommendation-desc">${rec.desc}</div>
+            </div>
+        `).join('');
+    }
+    
+    loadMoreHistory() {
+        // 더 많은 히스토리 로드 구현
+        window.showToast('모든 히스토리가 표시되었습니다', 'info');
+    }
+}
+
+// 전역 인스턴스
+let comparisonAnalyzer;
+
+document.addEventListener('DOMContentLoaded', function() {
+    comparisonAnalyzer = new ComparisonAnalyzer();
+    window.comparisonAnalyzer = comparisonAnalyzer;
+});
+</script>
+{% endblock %}
