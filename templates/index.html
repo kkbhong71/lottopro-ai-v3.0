@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 히어로 섹션 -->
+<section class="relative pt-20 pb-32 overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <!-- 메인 타이틀 -->
+            <div class="mb-6">
+                <h1 class="text-6xl md:text-8xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent mb-4 leading-tight">
+                    AI 로또
+                </h1>
+                <h2 class="text-4xl md:text-6xl font-black bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    예측 시스템
+                </h2>
+            </div>
+            
+            <!-- 버전 배지 -->
+            <div class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-md border border-purple-400/30 rounded-full mb-8">
+                <span class="text-purple-300 font-medium mr-2">🚀 NEW</span>
+                <span class="text-white font-bold text-lg">v3.0</span>
+                <span class="text-purple-300 font-medium ml-2">출시!</span>
+            </div>
+            
+            <!-- 설명 -->
+            <p class="text-xl md:text-2xl text-purple-200 mb-12 max-w-4xl mx-auto leading-relaxed">
+                <span class="font-bold text-pink-300">{{ algorithm_count }}가지 독자적인 AI 알고리즘</span>이 
+                과거 데이터를 깊이 분석하여<br>
+                <span class="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent font-bold">
+                    최적의 로또 예상번호
+                </span>를 추천해드립니다
+            </p>
+            
+            <!-- CTA 버튼들 -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+                <a href="/algorithms" class="btn-primary">
+                    <i class="fas fa-brain mr-3"></i>
+                    AI 예측 시작하기
+                    <div class="ml-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-arrow-right text-sm"></i>
+                    </div>
+                </a>
+                <button id="quick-prediction" class="btn-secondary">
+                    <i class="fas fa-zap mr-3"></i>
+                    원클릭 빠른 예측
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 플로팅 카드들 -->
+    <div class="absolute inset-0 pointer-events-none">
+        <div class="floating-card" style="top: 10%; left: 10%; animation-delay: 0s;">💎</div>
+        <div class="floating-card" style="top: 20%; right: 15%; animation-delay: 1s;">🎯</div>
+        <div class="floating-card" style="top: 60%; left: 5%; animation-delay: 2s;">⚡</div>
+        <div class="floating-card" style="bottom: 20%; right: 10%; animation-delay: 1.5s;">🚀</div>
+    </div>
+</section>
+
+<!-- 핵심 기능 섹션 -->
+<section class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- 섹션 헤더 -->
+        <div class="text-center mb-16">
+            <h3 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                🎲 AI 예측 알고리즘
+            </h3>
+            <p class="text-xl text-purple-300 max-w-3xl mx-auto">
+                각기 다른 방식으로 분석하여 최고의 정확도를 자랑하는 8가지 독자적 모델
+            </p>
+        </div>
+        
+        <!-- 알고리즘 미리보기 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16" id="algorithm-preview">
+            <!-- 알고리즘 카드들이 동적으로 로드됩니다 -->
+        </div>
+        
+        <!-- 전체 보기 버튼 -->
+        <div class="text-center">
+            <a href="/algorithms" class="btn-outline">
+                <i class="fas fa-th mr-3"></i>
+                모든 알고리즘 보기
+                <i class="fas fa-external-link-alt ml-3"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- 실시간 통계 섹션 -->
+<section class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- 섹션 헤더 -->
+        <div class="text-center mb-16">
+            <h3 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                📊 실시간 분석 현황
+            </h3>
+            <p class="text-xl text-purple-300">
+                AI가 24시간 실시간으로 데이터를 분석합니다
+            </p>
+        </div>
+        
+        <!-- 통계 카드 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 분석된 회차 수 -->
+            <div class="stat-card">
+                <div class="stat-icon bg-blue-500">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number" id="analyzed-rounds">1,190</div>
+                    <div class="stat-label">분석된 회차</div>
+                </div>
+                <div class="stat-trend">
+                    <i class="fas fa-arrow-up text-green-400"></i>
+                    <span class="text-green-400">+1 매주</span>
+                </div>
+            </div>
+            
+            <!-- 예측 정확도 -->
+            <div class="stat-card">
+                <div class="stat-icon bg-purple-500">
+                    <i class="fas fa-target"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number" id="accuracy-rate">82.3%</div>
+                    <div class="stat-label">최고 정확도</div>
+                </div>
+                <div class="stat-trend">
+                    <i class="fas fa-arrow-up text-green-400"></i>
+                    <span class="text-green-400">+2.1% 개선</span>
+                </div>
+            </div>
+            
+            <!-- 저장된 예측 -->
+            <div class="stat-card">
+                <div class="stat-icon bg-pink-500">
+                    <i class="fas fa-save"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number" id="saved-predictions">0</div>
+                    <div class="stat-label">내 예측 번호</div>
+                </div>
+                <div class="stat-trend">
+                    <i class="fas fa-plus text-blue-400"></i>
+                    <span class="text-blue-400">예측 저장하기</span>
+                </div>
+            </div>
+            
+            <!-- 최근 업데이트 -->
+            <div class="stat-card">
+                <div class="stat-icon bg-orange-500">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number" id="last-update">방금</div>
+                    <div class="stat-label">마지막 업데이트</div>
+                </div>
+                <div class="stat-trend">
+                    <i class="fas fa-circle text-green-400 animate-pulse"></i>
+                    <span class="text-green-400">실시간</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 빠른 예측 섹션 -->
+<section class="py-20 relative">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="glass-card p-8 md:p-12">
+            <div class="text-center mb-8">
+                <h3 class="text-3xl md:text-4xl font-bold text-white mb-4">
+                    ⚡ 빠른 AI 예측
+                </h3>
+                <p class="text-lg text-purple-300">
+                    선호하는 번호가 있다면 입력하세요. AI가 나머지를 완성해드립니다!
+                </p>
+            </div>
+            
+            <!-- 번호 입력 영역 -->
+            <div class="mb-8">
+                <label class="block text-white font-medium mb-4">
+                    선호하는 번호 입력 (선택사항)
+                </label>
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                    <input type="number" class="number-input" placeholder="1-45" min="1" max="45">
+                </div>
+                
+                <div class="flex justify-center space-x-4 mb-6">
+                    <button id="clear-numbers" class="btn-small-outline">
+                        <i class="fas fa-eraser mr-2"></i>초기화
+                    </button>
+                    <button id="random-fill" class="btn-small-outline">
+                        <i class="fas fa-random mr-2"></i>랜덤 채우기
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 예측 버튼 -->
+            <div class="text-center">
+                <button id="generate-prediction" class="btn-primary-large">
+                    <i class="fas fa-magic mr-3"></i>
+                    AI 예측 번호 생성
+                    <div class="ml-4 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- 예측 결과 영역 -->
+            <div id="prediction-result" class="hidden mt-8">
+                <div class="border-t border-white/10 pt-8">
+                    <h4 class="text-xl font-bold text-white mb-4 text-center">
+                        🎯 AI 추천 번호
+                    </h4>
+                    <div class="prediction-numbers mb-6" id="recommended-numbers">
+                        <!-- 번호가 동적으로 표시됩니다 -->
+                    </div>
+                    
+                    <div class="flex justify-center space-x-4">
+                        <button id="save-prediction" class="btn-secondary">
+                            <i class="fas fa-save mr-2"></i>예측 저장
+                        </button>
+                        <button id="new-prediction" class="btn-outline">
+                            <i class="fas fa-redo mr-2"></i>다시 예측
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 특징 섹션 -->
+<section class="py-20 relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h3 class="text-4xl md:text-5xl font-bold text-white mb-4">
+                🚀 왜 LottoPro-AI v3.0인가요?
+            </h3>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fab fa-github"></i>
+                </div>
+                <h4 class="feature-title">GitHub 연동 시스템</h4>
+                <p class="feature-description">
+                    실시간 코드 업데이트와 버전 관리로 항상 최신 알고리즘을 사용합니다
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h4 class="feature-title">8가지 독자적 AI</h4>
+                <p class="feature-description">
+                    각기 다른 방식의 머신러닝 모델로 최고의 예측 정확도를 달성합니다
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h4 class="feature-title">실시간 성과 추적</h4>
+                <p class="feature-description">
+                    예측 저장, 당첨 비교, 통계 분석으로 나만의 로또 전략을 세워보세요
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h4 class="feature-title">PWA 지원</h4>
+                <p class="feature-description">
+                    앱처럼 설치하고 오프라인에서도 사용 가능한 최신 웹 기술을 적용했습니다
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-palette"></i>
+                </div>
+                <h4 class="feature-title">최신 UI/UX</h4>
+                <p class="feature-description">
+                    다크모드, 글래스모피즘, 마이크로 인터랙션으로 놀라운 사용자 경험을 제공합니다
+                </p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-gift"></i>
+                </div>
+                <h4 class="feature-title">완전 무료</h4>
+                <p class="feature-description">
+                    모든 프리미엄 기능을 100% 무료로 제공합니다. 숨겨진 비용은 없습니다
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/prediction.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadAlgorithmPreview();
+    updateStats();
+    initQuickPrediction();
+});
+</script>
+{% endblock %}
