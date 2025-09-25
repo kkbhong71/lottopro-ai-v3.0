@@ -1,4 +1,3 @@
-# ===== health_check.py =====
 def health_check():
     """서비스 상태 확인"""
     try:
