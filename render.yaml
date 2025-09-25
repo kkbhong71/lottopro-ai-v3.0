@@ -1,0 +1,21 @@
+# ===== render.yaml (Render Blueprint) =====
+services:
+  - type: web
+    name: lottopro-ai-v3
+    env: python
+    plan: starter
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --worker-class eventlet
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GITHUB_REPO
+        value: your-username/lottopro-algorithms
+      - key: GITHUB_TOKEN
+        sync: false # 수동으로 설정 필요
+    healthCheckPath: /api/health
+    autoDeploy: true
