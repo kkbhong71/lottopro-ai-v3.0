@@ -39,7 +39,7 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Data and Cache
+# Application specific
 data/cache/
 data/user_predictions.json
 *.log
@@ -47,3 +47,6 @@ data/user_predictions.json
 # Temporary files
 temp/
 tmp/
+
+# Jupyter Notebook
+.ipynb_checkpoints
