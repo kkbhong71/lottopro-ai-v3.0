@@ -6,31 +6,70 @@ import pandas as pd
 import numpy as np
 import requests
 from pathlib import Path
-import subprocess
 import tempfile
 import logging
-from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
+import hashlib
+import time
+from functools import wraps
+import importlib.util
+import sys
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key')
+app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
 app.config['JSON_AS_ASCII'] = False
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# GitHub 설정
-GITHUB_REPO = os.environ.get('GITHUB_REPO', 'your-username/lottopro-algorithms')
+# GitHub 설정 (환경변수 우선, 기본값으로 사용자 저장소)
+GITHUB_REPO = os.environ.get('GITHUB_REPO', 'kkbhong71/lottopro-ai-v3.0')
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
 GITHUB_API_BASE = f'https://api.github.com/repos/{GITHUB_REPO}'
+
+# 알고리즘 실행 제한
+ALGORITHM_CACHE = {}
+LAST_EXECUTION = {}
+EXECUTION_LIMIT = 60  # 60초마다 실행 가능
+
+def rate_limit(limit_seconds=60):
+    """API 호출 제한 데코레이터"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = f"{request.remote_addr}_{func.__name__}"
+            now = time.time()
+            
+            if key in LAST_EXECUTION:
+                if now - LAST_EXECUTION[key] < limit_seconds:
+                    return jsonify({
+                        'status': 'error', 
+                        'message': f'{limit_seconds}초 후에 다시 시도해주세요.'
+                    }), 429
+            
+            LAST_EXECUTION[key] = now
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 class LottoProAI:
     def __init__(self):
         self.data_path = Path('data')
         self.data_path.mkdir(exist_ok=True)
+        
+        # 사용자 데이터 저장소
         self.user_data_path = self.data_path / 'user_predictions.json'
         self.algorithm_info_path = Path('algorithms/algorithm_info.json')
+        
+        # 캐시 디렉토리
+        self.cache_path = self.data_path / 'cache'
+        self.cache_path.mkdir(exist_ok=True)
+        
+        # 초기화
         self.load_algorithm_info()
         self.load_lotto_data()
         
@@ -39,66 +78,159 @@ class LottoProAI:
         try:
             with open(self.algorithm_info_path, 'r', encoding='utf-8') as f:
                 self.algorithm_info = json.load(f)
+            logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
         except FileNotFoundError:
             logger.warning("Algorithm info file not found, using default")
-            self.algorithm_info = {"algorithms": {}}
+            self.algorithm_info = {
+                "version": "3.0",
+                "algorithms": {},
+                "categories": {},
+                "difficulty_levels": {}
+            }
             
     def load_lotto_data(self):
         """로또 당첨번호 데이터 로드"""
         try:
-            self.lotto_df = pd.read_csv(self.data_path / 'new_1190.csv')
-            logger.info(f"Loaded {len(self.lotto_df)} lottery records")
+            # 먼저 data 폴더에서 찾기
+            csv_path = self.data_path / 'new_1190.csv'
+            if not csv_path.exists():
+                # 루트 폴더에서 찾기
+                csv_path = Path('new_1190.csv')
+            
+            self.lotto_df = pd.read_csv(csv_path)
+            
+            # 컬럼명 표준화
+            expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
+            if list(self.lotto_df.columns) == expected_columns:
+                logger.info(f"Loaded {len(self.lotto_df)} lottery records")
+            else:
+                logger.warning(f"Column names may not match expected format: {list(self.lotto_df.columns)}")
+                
         except FileNotFoundError:
-            logger.error("Lottery data file not found")
+            logger.error("Lottery data file not found (new_1190.csv)")
+            self.lotto_df = pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error loading lottery data: {str(e)}")
             self.lotto_df = pd.DataFrame()
     
+    def get_algorithm_cache_key(self, algorithm_id):
+        """알고리즘 캐시 키 생성"""
+        data_hash = hashlib.md5(str(len(self.lotto_df)).encode()).hexdigest()[:8]
+        return f"{algorithm_id}_{data_hash}"
+    
     def execute_github_algorithm(self, algorithm_id):
-        """GitHub에서 알고리즘 코드를 실행"""
+        """GitHub에서 알고리즘 코드를 안전하게 실행"""
         try:
-            algorithm_path = self.algorithm_info['algorithms'][algorithm_id]['github_path']
+            # 알고리즘 정보 확인
+            if algorithm_id not in self.algorithm_info.get('algorithms', {}):
+                raise Exception(f"Algorithm '{algorithm_id}' not found")
+            
+            algorithm_info = self.algorithm_info['algorithms'][algorithm_id]
+            
+            # 캐시 확인
+            cache_key = self.get_algorithm_cache_key(algorithm_id)
+            cache_file = self.cache_path / f"{cache_key}.json"
+            
+            # 캐시된 결과가 있고 1시간 이내라면 사용
+            if cache_file.exists():
+                cache_time = datetime.fromtimestamp(cache_file.stat().st_mtime)
+                if datetime.now() - cache_time < timedelta(hours=1):
+                    with open(cache_file, 'r', encoding='utf-8') as f:
+                        cached_result = json.load(f)
+                        cached_result['cached'] = True
+                        return cached_result
             
             # GitHub에서 코드 다운로드
-            response = requests.get(
-                f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{algorithm_path}',
-                headers={'Authorization': f'token {GITHUB_TOKEN}' if GITHUB_TOKEN else None}
-            )
+            algorithm_path = algorithm_info['github_path']
+            github_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{algorithm_path}'
+            
+            headers = {}
+            if GITHUB_TOKEN:
+                headers['Authorization'] = f'token {GITHUB_TOKEN}'
+            
+            response = requests.get(github_url, headers=headers, timeout=30)
             
             if response.status_code != 200:
-                raise Exception(f"Failed to download algorithm: {response.status_code}")
+                raise Exception(f"Failed to download algorithm: HTTP {response.status_code}")
             
             code_content = response.text
             
-            # 임시 파일에 코드 저장 및 실행
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-                f.write(code_content)
-                temp_file = f.name
+            # 보안 검사 (기본적인 위험 코드 패턴 체크)
+            dangerous_patterns = [
+                'import os', '__import__', 'exec(', 'eval(',
+                'open(', 'file(', 'subprocess', 'system(',
+                'rm ', 'del ', 'remove', 'shutil'
+            ]
             
-            try:
-                # 안전한 코드 실행 환경 구성
-                exec_globals = {
-                    'pd': pd,
-                    'np': np,
-                    'lotto_data': self.lotto_df,
-                    'data_path': str(self.data_path)
+            for pattern in dangerous_patterns:
+                if pattern in code_content:
+                    logger.warning(f"Potentially dangerous pattern found: {pattern}")
+            
+            # 안전한 실행 환경 구성
+            safe_globals = {
+                '__builtins__': {
+                    'len': len, 'range': range, 'enumerate': enumerate,
+                    'zip': zip, 'map': map, 'filter': filter,
+                    'sum': sum, 'max': max, 'min': min, 'abs': abs,
+                    'round': round, 'int': int, 'float': float,
+                    'str': str, 'list': list, 'dict': dict, 'set': set,
+                    'tuple': tuple, 'bool': bool, 'type': type,
+                    'print': print  # 디버깅용
+                },
+                'pd': pd,
+                'np': np,
+                'lotto_data': self.lotto_df.copy(),  # 복사본 전달
+                'data_path': str(self.data_path),
+                'datetime': datetime,
+                'random': np.random
+            }
+            
+            # 코드 실행
+            exec(code_content, safe_globals)
+            
+            # 예측 함수 호출
+            if 'predict_numbers' in safe_globals:
+                result = safe_globals['predict_numbers']()
+                
+                # 결과 검증
+                if not isinstance(result, (list, tuple)) or len(result) != 6:
+                    raise Exception("Algorithm must return exactly 6 numbers")
+                
+                # 번호 범위 검증 (1-45)
+                if not all(isinstance(n, (int, np.integer)) and 1 <= n <= 45 for n in result):
+                    raise Exception("All numbers must be integers between 1 and 45")
+                
+                # 중복 검사
+                if len(set(result)) != 6:
+                    raise Exception("All numbers must be unique")
+                
+                # 결과 정리
+                prediction_result = {
+                    'status': 'success',
+                    'numbers': sorted(list(map(int, result))),
+                    'algorithm': algorithm_id,
+                    'algorithm_name': algorithm_info['name'],
+                    'accuracy_rate': algorithm_info.get('accuracy_rate', 0),
+                    'timestamp': datetime.now().isoformat(),
+                    'cached': False
                 }
                 
-                exec(code_content, exec_globals)
+                # 결과 캐싱
+                with open(cache_file, 'w', encoding='utf-8') as f:
+                    json.dump(prediction_result, f, ensure_ascii=False, indent=2)
                 
-                # 예측 결과 반환 (표준 함수명: predict_numbers)
-                if 'predict_numbers' in exec_globals:
-                    result = exec_globals['predict_numbers']()
-                    return {
-                        'status': 'success',
-                        'numbers': result,
-                        'algorithm': algorithm_id,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                else:
-                    raise Exception("predict_numbers function not found in algorithm")
-                    
-            finally:
-                os.unlink(temp_file)
+                return prediction_result
                 
+            else:
+                raise Exception("predict_numbers function not found in algorithm")
+                
+        except requests.RequestException as e:
+            logger.error(f"Network error downloading algorithm: {str(e)}")
+            return {
+                'status': 'error',
+                'message': f'네트워크 오류: {str(e)}',
+                'algorithm': algorithm_id
+            }
         except Exception as e:
             logger.error(f"Algorithm execution failed: {str(e)}")
             return {
@@ -120,11 +252,13 @@ class LottoProAI:
             # 사용자별 데이터 구조 초기화
             if user_id not in user_data:
                 user_data[user_id] = {
+                    'created_at': datetime.now().isoformat(),
                     'predictions': [],
                     'stats': {
                         'total_predictions': 0,
                         'total_matches': 0,
-                        'best_match': 0
+                        'best_match': 0,
+                        'algorithm_usage': {}
                     }
                 }
             
@@ -133,14 +267,21 @@ class LottoProAI:
                 'id': str(uuid.uuid4()),
                 'numbers': prediction_data['numbers'],
                 'algorithm': prediction_data['algorithm'],
+                'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
                 'round_predicted': prediction_data.get('round_predicted'),
                 'is_checked': False,
-                'match_result': None
+                'match_result': None,
+                'cached': prediction_data.get('cached', False)
             }
             
             user_data[user_id]['predictions'].append(prediction_entry)
             user_data[user_id]['stats']['total_predictions'] += 1
+            
+            # 알고리즘 사용 통계
+            algo_stats = user_data[user_id]['stats']['algorithm_usage']
+            algo_id = prediction_data['algorithm']
+            algo_stats[algo_id] = algo_stats.get(algo_id, 0) + 1
             
             # 파일 저장
             with open(self.user_data_path, 'w', encoding='utf-8') as f:
@@ -173,15 +314,28 @@ class LottoProAI:
             
             # 매치 수 계산
             predicted_numbers = set(prediction['numbers'])
-            winning_set = set(winning_numbers)
+            winning_set = set(winning_numbers[:6])  # 보너스 번호 제외
             matches = len(predicted_numbers.intersection(winning_set))
+            
+            # 등수 계산
+            prize_info = {
+                6: {'rank': '1등', 'description': '6개 일치'},
+                5: {'rank': '2등', 'description': '5개 일치'},
+                4: {'rank': '3등', 'description': '4개 일치'},
+                3: {'rank': '4등', 'description': '3개 일치'},
+                2: {'rank': '5등', 'description': '2개 일치'},
+                1: {'rank': '6등', 'description': '1개 일치'},
+                0: {'rank': '낙첨', 'description': '일치 없음'}
+            }
             
             # 결과 저장
             prediction['is_checked'] = True
             prediction['match_result'] = {
                 'matches': matches,
                 'winning_numbers': winning_numbers,
-                'matched_numbers': list(predicted_numbers.intersection(winning_set))
+                'matched_numbers': sorted(list(predicted_numbers.intersection(winning_set))),
+                'prize_info': prize_info.get(matches, prize_info[0]),
+                'check_date': datetime.now().isoformat()
             }
             
             # 통계 업데이트
@@ -206,19 +360,32 @@ class LottoProAI:
 # 전역 인스턴스 생성
 lotto_ai = LottoProAI()
 
+# 라우트 정의
 @app.route('/')
 def index():
     """메인 페이지"""
+    algorithm_count = len(lotto_ai.algorithm_info.get('algorithms', {}))
+    data_count = len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0
+    
     return render_template('index.html', 
-                         algorithm_count=len(lotto_ai.algorithm_info.get('algorithms', {})))
+                         algorithm_count=algorithm_count,
+                         data_count=data_count,
+                         version="3.0")
 
 @app.route('/algorithms')
 def algorithms():
     """알고리즘 선택 페이지"""
     algorithms_data = lotto_ai.algorithm_info.get('algorithms', {})
-    return render_template('algorithm.html', algorithms=algorithms_data)
+    categories = lotto_ai.algorithm_info.get('categories', {})
+    difficulty_levels = lotto_ai.algorithm_info.get('difficulty_levels', {})
+    
+    return render_template('algorithm.html', 
+                         algorithms=algorithms_data,
+                         categories=categories,
+                         difficulty_levels=difficulty_levels)
 
 @app.route('/api/execute/<algorithm_id>')
+@rate_limit(60)  # 60초마다 실행 가능
 def execute_algorithm(algorithm_id):
     """알고리즘 실행 API"""
     if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
@@ -250,10 +417,15 @@ def compare_numbers():
     if not user_id:
         return jsonify({'status': 'error', 'message': 'User session not found'}), 400
     
+    # 당첨번호 유효성 검사
+    winning_numbers = data.get('winning_numbers', [])
+    if not isinstance(winning_numbers, list) or len(winning_numbers) < 6:
+        return jsonify({'status': 'error', 'message': 'Invalid winning numbers'}), 400
+    
     result = lotto_ai.compare_with_winning_numbers(
         user_id, 
         data['prediction_id'], 
-        data['winning_numbers']
+        winning_numbers
     )
     
     return jsonify(result)
@@ -263,7 +435,15 @@ def get_user_predictions():
     """사용자 예측 목록 조회"""
     user_id = session.get('user_id')
     if not user_id:
-        return jsonify({'predictions': [], 'stats': {}})
+        return jsonify({
+            'predictions': [], 
+            'stats': {
+                'total_predictions': 0, 
+                'total_matches': 0, 
+                'best_match': 0,
+                'algorithm_usage': {}
+            }
+        })
     
     try:
         if lotto_ai.user_data_path.exists():
@@ -271,13 +451,26 @@ def get_user_predictions():
                 user_data = json.load(f)
                 user_info = user_data.get(user_id, {
                     'predictions': [], 
-                    'stats': {'total_predictions': 0, 'total_matches': 0, 'best_match': 0}
+                    'stats': {
+                        'total_predictions': 0, 
+                        'total_matches': 0, 
+                        'best_match': 0,
+                        'algorithm_usage': {}
+                    }
                 })
                 return jsonify(user_info)
     except Exception as e:
         logger.error(f"Failed to load user predictions: {str(e)}")
     
-    return jsonify({'predictions': [], 'stats': {}})
+    return jsonify({
+        'predictions': [], 
+        'stats': {
+            'total_predictions': 0, 
+            'total_matches': 0, 
+            'best_match': 0,
+            'algorithm_usage': {}
+        }
+    })
 
 @app.route('/saved-numbers')
 def saved_numbers():
@@ -289,17 +482,37 @@ def compare():
     """당첨번호 비교 페이지"""
     return render_template('compare.html')
 
+@app.route('/statistics')
+def statistics():
+    """통계 분석 페이지"""
+    return render_template('statistics.html')
+
 @app.route('/api/lottery-data')
 def get_lottery_data():
     """로또 데이터 API"""
     try:
+        if lotto_ai.lotto_df.empty:
+            return jsonify({
+                'status': 'error',
+                'message': 'No lottery data available'
+            })
+            
         return jsonify({
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
-            'total_records': len(lotto_ai.lotto_df)
+            'total_records': len(lotto_ai.lotto_df),
+            'latest_round': lotto_ai.lotto_df['round'].max() if 'round' in lotto_ai.lotto_df.columns else 0
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/algorithm-info')
+def get_all_algorithm_info():
+    """전체 알고리즘 정보 조회"""
+    return jsonify({
+        'status': 'success',
+        'info': lotto_ai.algorithm_info
+    })
 
 @app.route('/api/algorithm-info/<algorithm_id>')
 def get_algorithm_info(algorithm_id):
@@ -313,6 +526,26 @@ def get_algorithm_info(algorithm_id):
         'algorithm': algorithms[algorithm_id]
     })
 
+@app.route('/api/health')
+def health_check():
+    """서비스 상태 확인"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat(),
+        'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
+        'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
+        'version': '3.0'
+    })
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'status': 'error', 'message': 'Page not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
