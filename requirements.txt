@@ -1,50 +1,54 @@
-# LottoPro-AI v3.0 Dependencies
-# Core Framework
+# LottoPro-AI v3.0 Dependencies - Optimized
+# ===========================================
+
+# Core Web Framework
 Flask==3.0.0
 Werkzeug==3.0.1
-Jinja2==3.1.2
+Jinja2==3.1.3
+MarkupSafe==2.1.3
 
-# Data Processing & Analysis
+# Data Processing & Analysis - Core
 pandas==2.1.4
 numpy==1.25.2
-scikit-learn==1.3.2
 scipy==1.11.4
 
-# Machine Learning & AI
-tensorflow==2.15.0
-xgboost==2.0.2
-lightgbm==4.1.0
-
-# Statistical Analysis
-statsmodels==0.14.1
+# Statistical Analysis & Visualization
 matplotlib==3.8.2
 seaborn==0.13.0
 plotly==5.17.0
 
+# Machine Learning - Essential
+scikit-learn==1.3.2
+statsmodels==0.14.1
+
+# Advanced ML/AI - Optional but Available
+xgboost==2.0.3
+lightgbm==4.1.0
+# tensorflow==2.15.0  # 주석처리 - 필요시에만 활성화 (용량 큼)
+# torch==2.1.2        # 주석처리 - 필요시에만 활성화 (용량 큼)
+# torchvision==0.16.2  # torch와 함께 주석처리
+
 # API & HTTP Requests
 requests==2.31.0
-urllib3==2.1.0
+urllib3==2.2.0
 
 # Date & Time Processing
 python-dateutil==2.8.2
-pytz==2023.3
+pytz==2024.1
 
 # JSON & Data Serialization
-jsonschema==4.20.0
+jsonschema==4.21.1
 
 # File Processing
 openpyxl==3.1.2
 xlrd==2.0.1
 
 # Cryptography & Security
-cryptography==41.0.8
+cryptography==42.0.0
 bcrypt==4.1.2
 
 # Environment & Configuration
 python-dotenv==1.0.0
-
-# Logging & Monitoring
-structlog==23.2.0
 
 # GitHub API Integration
 PyGithub==2.1.1
@@ -54,69 +58,84 @@ sympy==1.12
 
 # Performance & Optimization
 joblib==1.3.2
-numba==0.58.1
+numba==0.59.0
 
-# Web Scraping (for lottery data)
+# Web Scraping (for lottery data updates)
 beautifulsoup4==4.12.2
-lxml==4.9.4
+lxml==5.1.0
 
-# Caching
-Flask-Caching==2.1.0
-
-# Rate Limiting
-Flask-Limiter==3.5.0
-
-# CORS Support
+# Flask Extensions - Essential
 Flask-CORS==4.0.0
-
-# Session Management
+Flask-Caching==2.1.0
+Flask-Limiter==3.5.0
 Flask-Session==0.5.0
 
-# Database (if needed for future expansion)
+# Database Support (for future expansion)
 SQLAlchemy==2.0.25
 Flask-SQLAlchemy==3.1.1
-
-# Testing (development)
-pytest==7.4.3
-pytest-flask==1.3.0
-
-# Code Quality (development)
-black==23.12.0
-flake8==6.1.0
-mypy==1.8.0
 
 # Production Server
 gunicorn==21.2.0
 eventlet==0.33.3
 
-# Memory Profiling (optional)
+# System Monitoring
+psutil==5.9.8
 memory-profiler==0.61.0
-psutil==5.9.7
-
-# Additional AI Libraries
-torch==2.1.2
-torchvision==0.16.2
 
 # Time Series Analysis
-prophet==1.1.5
+# prophet==1.1.5  # 주석처리 - 필요시에만 활성화 (의존성 복잡)
 
-# Optimization
-cvxpy==1.4.1
-hyperopt==0.2.7
+# Optimization Libraries
+# cvxpy==1.4.2    # 주석처리 - 특정 알고리즘에서만 필요
+# hyperopt==0.2.7  # 주석처리 - 특정 알고리즘에서만 필요
 
 # Utilities
 tqdm==4.66.1
 colorama==0.4.6
 click==8.1.7
 
-# Production Optimizations
+# Logging & Monitoring
+structlog==23.2.0
+sentry-sdk[flask]==1.41.0
+
+# Caching & Session Storage (Production)
 redis==5.0.1
-celery==5.3.4
+# celery==5.3.4  # 주석처리 - 백그라운드 작업 필요시에만
 
-# Monitoring
-sentry-sdk[flask]==1.40.0
+# Development Tools (개발환경에서만 사용)
+pytest==8.0.0
+pytest-flask==1.3.0
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
 
-# Version pinning for stability
+# Build Tools - 안정성을 위한 버전 고정
 setuptools==69.0.3
-pip==23.3.2
+pip==24.0
 wheel==0.42.0
+
+# 추가 보안 패키지
+itsdangerous==2.1.2
+
+# 메모리 및 성능 최적화
+cachetools==5.3.2
+
+# 환경별 설정 관리
+dynaconf==3.2.4
+
+# API 문서화 (선택사항)
+# flask-restx==1.3.0  # API 문서화가 필요한 경우 활성화
+
+# 추가 데이터 처리
+openpyxl==3.1.2
+python-multipart==0.0.6
+
+# 로그 회전 및 관리
+loguru==0.7.2
+
+# 입력 유효성 검사
+marshmallow==3.20.2
+
+# 비동기 처리 지원
+aiohttp==3.9.1
+aiofiles==23.2.1
