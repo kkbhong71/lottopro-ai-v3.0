@@ -1,103 +1,112 @@
 """
-The Strongest in the Universe ver 3.0 - Simplified
-웹앱 연동용 표준화된 버전 (핵심 로직만 유지)
+The Strongest in the Universe ver 3.0 - Web App Standardized Version
+우주 최강 AI 예측 시스템 3.0 - 웹앱 표준화 버전
+
+웹앱 표준 템플릿 적용:
+- predict_numbers() 진입점 함수
+- 글로벌 변수 사용 (lotto_data, pd, np)
+- 웹앱 안전 실행 환경 준수
+- 우주적 패턴 분석 및 양자역학적 선택
 """
 
 import pandas as pd
 import numpy as np
 from collections import Counter, defaultdict
 import random
-import json
-from pathlib import Path
-from datetime import datetime
+import warnings
 import math
 
-class StrongestUniverseV3Predictor:
-    def __init__(self, data_file_path='data/new_1190.csv'):
-        """
-        Strongest Universe v3.0 예측기 초기화
-        Args:
-            data_file_path: 로또 데이터 CSV 파일 경로
-        """
-        self.data_file_path = data_file_path
-        self.df = None
-        self.advanced_features = {}
-        self.cosmic_weights = {}
-        
-    def load_data(self):
-        """로또 데이터 로드"""
-        try:
-            # 다양한 경로에서 데이터 파일 찾기
-            possible_paths = [
-                self.data_file_path,
-                'new_1190.csv',
-                '../data/new_1190.csv',
-                'data/new_1190.csv'
-            ]
-            
-            for path in possible_paths:
-                try:
-                    self.df = pd.read_csv(path, encoding='utf-8-sig')
-                    print(f"✅ 데이터 로드 성공: {path}")
-                    return True
-                except:
-                    continue
-                    
-            print("❌ 데이터 파일을 찾을 수 없습니다.")
-            return False
-            
-        except Exception as e:
-            print(f"❌ 데이터 로드 실패: {e}")
-            return False
+warnings.filterwarnings('ignore')
+
+def predict_numbers():
+    """
+    웹앱 표준 예측 함수 - Strongest Universe v3.0 시스템
     
-    def standardize_columns(self):
-        """컬럼명 표준화"""
-        if self.df is None:
-            return False
-            
-        # 컬럼명 표준화 (다양한 형태 지원)
-        column_mapping = {}
-        for col in self.df.columns:
-            col_lower = col.lower().strip()
-            if 'num1' in col_lower or '1번' in col_lower or 'draw_date' in col_lower:
-                if 'date' in col_lower:
-                    column_mapping[col] = 'draw_date'
-                else:
-                    column_mapping[col] = 'num1'
-            elif 'num2' in col_lower or '2번' in col_lower:
-                column_mapping[col] = 'num2'
-            elif 'num3' in col_lower or '3번' in col_lower:
-                column_mapping[col] = 'num3'
-            elif 'num4' in col_lower or '4번' in col_lower:
-                column_mapping[col] = 'num4'
-            elif 'num5' in col_lower or '5번' in col_lower:
-                column_mapping[col] = 'num5'
-            elif 'num6' in col_lower or '6번' in col_lower:
-                column_mapping[col] = 'num6'
-            elif 'bonus' in col_lower or '보너스' in col_lower:
-                column_mapping[col] = 'bonus_num'
-            elif 'round' in col_lower or '회차' in col_lower:
-                column_mapping[col] = 'round'
-        
-        # 컬럼명 변경
-        self.df = self.df.rename(columns=column_mapping)
-        
-        # 필수 컬럼 확인
-        required_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
-        if not all(col in self.df.columns for col in required_cols):
-            print("❌ 필수 컬럼이 없습니다:", required_cols)
-            return False
-            
-        return True
+    글로벌 변수 사용:
+    - lotto_data: pandas DataFrame (로또 당첨번호 데이터)
+    - pd: pandas 라이브러리  
+    - np: numpy 라이브러리
+    - data_path: 데이터 폴더 경로 (문자열)
     
-    def extract_advanced_features(self):
-        """고급 특성 추출 (간소화 버전)"""
-        if self.df is None:
-            return False
-            
-        print("🔬 고급 특성 추출 중...")
+    Returns:
+        list: 정확히 6개의 로또 번호 [1-45 범위의 정수]
+    """
+    try:
+        # 1. 데이터 검증
+        if 'lotto_data' not in globals() or lotto_data.empty:
+            return generate_safe_fallback()
         
-        self.advanced_features = {}
+        df = lotto_data.copy()
+        
+        # 2. 데이터 전처리
+        df = preprocess_data(df)
+        
+        # 3. Strongest Universe v3.0 알고리즘 실행
+        result = run_strongest_universe_v3_algorithm(df)
+        
+        # 4. 결과 검증 및 반환
+        return validate_result(result)
+        
+    except Exception as e:
+        print(f"Strongest Universe v3.0 error: {str(e)[:100]}")
+        return generate_safe_fallback()
+
+def preprocess_data(df):
+    """데이터 전처리 - Strongest Universe v3.0용"""
+    try:
+        # 컬럼명 정규화
+        df.columns = [col.strip().lower().replace(' ', '_') for col in df.columns]
+        
+        # 표준 컬럼 매핑
+        if len(df.columns) >= 9:
+            standard_cols = ['round', 'draw_date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus_num']
+            mapping = dict(zip(df.columns[:9], standard_cols))
+            df = df.rename(columns=mapping)
+        
+        # 숫자 컬럼 변환
+        number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+        for col in number_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
+        # 유효성 필터링
+        df = df.dropna(subset=number_cols)
+        for col in number_cols:
+            if col in df.columns:
+                df = df[(df[col] >= 1) & (df[col] <= 45)]
+        
+        return df.sort_values('round' if 'round' in df.columns else df.columns[0]).reset_index(drop=True)
+        
+    except:
+        return df
+
+def run_strongest_universe_v3_algorithm(df):
+    """Strongest Universe v3.0 핵심 알고리즘"""
+    try:
+        if len(df) < 5:
+            return generate_smart_random()
+        
+        number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+        
+        # 고급 특성 추출
+        advanced_features = extract_advanced_features(df, number_cols)
+        
+        # 우주적 가중치 계산
+        cosmic_weights = calculate_cosmic_weights(df, advanced_features)
+        
+        # 양자역학적 선택
+        final_prediction = quantum_selection(cosmic_weights, advanced_features)
+        
+        return final_prediction
+        
+    except Exception as e:
+        print(f"Strongest Universe v3.0 algorithm error: {str(e)[:50]}")
+        return generate_smart_random()
+
+def extract_advanced_features(df, number_cols):
+    """고급 특성 추출"""
+    try:
+        features = {}
         
         # 1. 피보나치 수열 분석
         fibonacci_numbers = [1, 1, 2, 3, 5, 8, 13, 21, 34]
@@ -106,35 +115,25 @@ class StrongestUniverseV3Predictor:
         for num in fibonacci_numbers:
             if num <= 45:
                 count = 0
-                for col in ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']:
-                    if col in self.df.columns:
-                        count += (self.df[col] == num).sum()
+                for col in number_cols:
+                    if col in df.columns:
+                        count += (df[col] == num).sum()
                 fib_appearances[num] = count
         
-        self.advanced_features['fibonacci'] = fib_appearances
+        features['fibonacci'] = fib_appearances
         
         # 2. 소수 분석
-        def is_prime(n):
-            if n <= 1: return False
-            if n <= 3: return True
-            if n % 2 == 0 or n % 3 == 0: return False
-            i = 5
-            while i * i <= n:
-                if n % i == 0 or n % (i + 2) == 0: return False
-                i += 6
-            return True
-        
         primes = [num for num in range(2, 46) if is_prime(num)]
         prime_appearances = {}
         
         for prime in primes:
             count = 0
-            for col in ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']:
-                if col in self.df.columns:
-                    count += (self.df[col] == prime).sum()
+            for col in number_cols:
+                if col in df.columns:
+                    count += (df[col] == prime).sum()
             prime_appearances[prime] = count
             
-        self.advanced_features['primes'] = prime_appearances
+        features['primes'] = prime_appearances
         
         # 3. 황금비 기반 수열 분석
         golden_ratio = 1.618
@@ -144,29 +143,47 @@ class StrongestUniverseV3Predictor:
             if golden_num <= 45 and golden_num not in golden_numbers:
                 golden_numbers.append(golden_num)
         
-        self.advanced_features['golden_numbers'] = golden_numbers
+        features['golden_numbers'] = golden_numbers
         
         # 4. 주기성 분석
-        periodicity = self.analyze_periodicity()
-        self.advanced_features['periodicity'] = periodicity
+        periodicity = analyze_periodicity(df, number_cols)
+        features['periodicity'] = periodicity
         
         # 5. 연관 패턴 분석
-        association_patterns = self.analyze_association_patterns()
-        self.advanced_features['associations'] = association_patterns
+        association_patterns = analyze_association_patterns(df, number_cols)
+        features['associations'] = association_patterns
         
-        print(f"✅ 고급 특성 추출 완료: {len(self.advanced_features)}개 특성군")
+        return features
+        
+    except Exception as e:
+        print(f"Advanced features error: {str(e)[:50]}")
+        return {'fibonacci': {}, 'primes': {}, 'golden_numbers': [], 'periodicity': {}, 'associations': {}}
+
+def is_prime(n):
+    """소수 판별"""
+    if n <= 1:
+        return False
+    if n <= 3:
         return True
-    
-    def analyze_periodicity(self):
-        """주기성 분석 (간소화)"""
+    if n % 2 == 0 or n % 3 == 0:
+        return False
+    i = 5
+    while i * i <= n:
+        if n % i == 0 or n % (i + 2) == 0:
+            return False
+        i += 6
+    return True
+
+def analyze_periodicity(df, number_cols):
+    """주기성 분석"""
+    try:
         periodicity_scores = {}
         
         for num in range(1, 46):
             appearances = []
             
             # 각 번호가 나타나는 회차 찾기
-            for idx, row in self.df.iterrows():
-                number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+            for idx, row in df.iterrows():
                 row_numbers = [row[col] for col in number_cols if col in row]
                 if num in row_numbers:
                     appearances.append(idx)
@@ -183,15 +200,19 @@ class StrongestUniverseV3Predictor:
                     }
         
         return periodicity_scores
-    
-    def analyze_association_patterns(self):
-        """연관 패턴 분석 (간소화)"""
+        
+    except:
+        return {}
+
+def analyze_association_patterns(df, number_cols):
+    """연관 패턴 분석"""
+    try:
         co_occurrence = defaultdict(int)
         number_counts = defaultdict(int)
         
         # 동시 출현 빈도 계산
-        for _, row in self.df.iterrows():
-            numbers = [row[f'num{i}'] for i in range(1, 7) if f'num{i}' in row]
+        for _, row in df.iterrows():
+            numbers = [row[col] for col in number_cols if col in row]
             
             # 각 번호의 총 출현 횟수
             for num in numbers:
@@ -205,7 +226,7 @@ class StrongestUniverseV3Predictor:
         
         # 연관성 점수 계산
         association_scores = {}
-        total_draws = len(self.df)
+        total_draws = len(df)
         
         for i in range(1, 46):
             association_scores[i] = {}
@@ -228,46 +249,46 @@ class StrongestUniverseV3Predictor:
                         association_scores[i][j] = max(0, pmi)  # 음수는 0으로
         
         return association_scores
-    
-    def calculate_cosmic_weights(self):
-        """우주적 가중치 계산 (간소화)"""
-        if not self.advanced_features:
-            return False
-            
-        print("🌌 우주적 가중치 계산 중...")
         
-        self.cosmic_weights = {}
+    except:
+        return {}
+
+def calculate_cosmic_weights(df, advanced_features):
+    """우주적 가중치 계산"""
+    try:
+        number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+        cosmic_weights = {}
         
         for num in range(1, 46):
             weight = 1.0
             
             # 1. 기본 출현 빈도
             total_appearances = 0
-            for col in ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']:
-                if col in self.df.columns:
-                    total_appearances += (self.df[col] == num).sum()
+            for col in number_cols:
+                if col in df.columns:
+                    total_appearances += (df[col] == num).sum()
             
-            freq_weight = total_appearances / len(self.df) if len(self.df) > 0 else 0
+            freq_weight = total_appearances / len(df) if len(df) > 0 else 0
             weight += freq_weight * 2.0
             
             # 2. 피보나치 보너스
-            if num in self.advanced_features['fibonacci']:
-                fibonacci_bonus = self.advanced_features['fibonacci'][num] / len(self.df)
+            if num in advanced_features['fibonacci']:
+                fibonacci_bonus = advanced_features['fibonacci'][num] / len(df)
                 weight += fibonacci_bonus * 1.3
             
             # 3. 소수 보너스
-            if num in self.advanced_features['primes']:
-                prime_bonus = self.advanced_features['primes'][num] / len(self.df)
+            if num in advanced_features['primes']:
+                prime_bonus = advanced_features['primes'][num] / len(df)
                 weight += prime_bonus * 1.2
             
             # 4. 황금비 보너스
-            if num in self.advanced_features['golden_numbers']:
+            if num in advanced_features['golden_numbers']:
                 weight *= 1.15
             
             # 5. 주기성 점수
-            if num in self.advanced_features['periodicity']:
-                period_info = self.advanced_features['periodicity'][num]
-                current_round = len(self.df)
+            if num in advanced_features['periodicity']:
+                period_info = advanced_features['periodicity'][num]
+                current_round = len(df)
                 predicted_round = period_info['predicted_next']
                 
                 # 예측 출현 회차와 현재 회차의 거리
@@ -276,11 +297,11 @@ class StrongestUniverseV3Predictor:
                     proximity_bonus = (4 - distance) * 0.1
                     weight += proximity_bonus
             
-            # 6. 최근 출현 패턴 (간소화)
+            # 6. 최근 출현 패턴
             recent_appearances = 0
-            if len(self.df) >= 10:
-                recent_df = self.df.tail(10)
-                for col in ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']:
+            if len(df) >= 10:
+                recent_df = df.tail(10)
+                for col in number_cols:
                     if col in recent_df.columns:
                         recent_appearances += (recent_df[col] == num).sum()
             
@@ -289,59 +310,49 @@ class StrongestUniverseV3Predictor:
             elif recent_appearances >= 2:  # 최근 과도출현 페널티
                 weight *= 0.85
             
-            # 7. 숫자학적 특성 (간소화)
+            # 7. 숫자학적 특성
             digit_sum = sum(int(d) for d in str(num))
             if digit_sum in [7, 11, 13]:  # 행운의 숫자
                 weight *= 1.05
             
-            self.cosmic_weights[num] = max(weight, 0.1)  # 최소값 보장
+            cosmic_weights[num] = max(weight, 0.1)  # 최소값 보장
         
         # 가중치 정규화
-        total_weight = sum(self.cosmic_weights.values())
-        for num in self.cosmic_weights:
-            self.cosmic_weights[num] /= total_weight
+        total_weight = sum(cosmic_weights.values())
+        for num in cosmic_weights:
+            cosmic_weights[num] /= total_weight
         
-        print("✅ 우주적 가중치 계산 완료")
-        return True
-    
-    def quantum_selection(self, count=1, user_numbers=None):
-        """
-        양자역학적 선택 알고리즘 (간소화)
-        Args:
-            count: 생성할 번호 세트 수
-            user_numbers: 사용자 선호 번호
-        Returns:
-            예측된 번호 세트들
-        """
-        if not self.cosmic_weights:
-            return []
+        return cosmic_weights
         
-        print("⚛️ 양자역학적 번호 선택 중...")
+    except Exception as e:
+        print(f"Cosmic weights error: {str(e)[:50]}")
+        return {i: 1/45 for i in range(1, 46)}
+
+def quantum_selection(cosmic_weights, advanced_features):
+    """양자역학적 선택 알고리즘"""
+    try:
+        selected_numbers = []
         
-        predicted_sets = []
+        # 여러 시도를 통해 최적 조합 찾기
+        best_combination = None
+        best_score = -1
         
-        for _ in range(count):
-            selected_numbers = []
+        for attempt in range(50):
+            selected = []
             
-            # 사용자 선호 번호 먼저 추가
-            if user_numbers:
-                valid_user_numbers = [n for n in user_numbers if 1 <= n <= 45]
-                selected_numbers.extend(valid_user_numbers[:2])  # 최대 2개까지
-            
-            # 나머지 번호 선택
-            while len(selected_numbers) < 6:
-                # 가중치 기반 확률적 선택
-                available_numbers = [n for n in range(1, 46) if n not in selected_numbers]
-                weights = [self.cosmic_weights.get(n, 0.001) for n in available_numbers]
+            # 가중치 기반 선택
+            while len(selected) < 6:
+                available_numbers = [n for n in range(1, 46) if n not in selected]
+                weights = [cosmic_weights.get(n, 0.001) for n in available_numbers]
                 
                 # 연관성 보정
-                if len(selected_numbers) > 0:
-                    associations = self.advanced_features.get('associations', {})
+                if len(selected) > 0:
+                    associations = advanced_features.get('associations', {})
                     for i, num in enumerate(available_numbers):
                         association_bonus = 0
-                        for selected in selected_numbers:
-                            if selected in associations and num in associations[selected]:
-                                association_bonus += associations[selected][num]
+                        for selected_num in selected:
+                            if selected_num in associations and num in associations[selected_num]:
+                                association_bonus += associations[selected_num][num]
                         weights[i] += association_bonus * 0.1
                 
                 # 정규화
@@ -353,110 +364,143 @@ class StrongestUniverseV3Predictor:
                 
                 # 선택
                 selected_num = np.random.choice(available_numbers, p=weights)
-                selected_numbers.append(selected_num)
+                selected.append(selected_num)
             
-            predicted_sets.append(sorted(selected_numbers))
+            # 조합 평가
+            score = evaluate_quantum_combination(selected, advanced_features)
+            
+            if score > best_score:
+                best_score = score
+                best_combination = selected
         
-        return predicted_sets
-    
-    def get_algorithm_info(self):
-        """알고리즘 정보 반환"""
-        return {
-            'name': 'The Strongest in the Universe v3.0',
-            'description': '우주 최강 AI 예측 시스템 - 고급 수학적 패턴과 양자역학적 선택',
-            'version': '3.0.0',
-            'features': [
-                '피보나치 수열 패턴 분석',
-                '소수 분포 최적화',
-                '황금비 기반 수열 활용',
-                '주기성 예측 모델링',
-                '연관성 패턴 매트릭스',
-                '우주적 가중치 시스템',
-                '양자역학적 선택 알고리즘',
-                '다차원 특성 융합'
-            ],
-            'accuracy_focus': '고급 수학적 모델과 우주적 패턴 인식',
-            'recommendation': '최첨단 AI 기술을 원하는 고급 사용자',
-            'complexity': 'high',
-            'execution_time': 'medium'
-        }
+        return sorted(best_combination) if best_combination else generate_smart_random()
+        
+    except Exception as e:
+        print(f"Quantum selection error: {str(e)[:50]}")
+        return generate_smart_random()
 
-def run_strongest_universe_v3(data_file_path='data/new_1190.csv', user_numbers=None):
-    """
-    Strongest Universe v3.0 실행 함수 (웹앱 연동용)
-    Args:
-        data_file_path: 데이터 파일 경로
-        user_numbers: 사용자 선호 번호 (선택사항)
-    Returns:
-        결과 딕셔너리
-    """
-    predictor = StrongestUniverseV3Predictor(data_file_path)
-    
-    # 단계별 실행
-    if not predictor.load_data():
-        return {
-            'success': False,
-            'error': '데이터 로드 실패',
-            'numbers': [],
-            'algorithm_info': predictor.get_algorithm_info()
-        }
-    
-    if not predictor.standardize_columns():
-        return {
-            'success': False,
-            'error': '데이터 컬럼 표준화 실패',
-            'numbers': [],
-            'algorithm_info': predictor.get_algorithm_info()
-        }
-    
-    if not predictor.extract_advanced_features():
-        return {
-            'success': False,
-            'error': '고급 특성 추출 실패',
-            'numbers': [],
-            'algorithm_info': predictor.get_algorithm_info()
-        }
-    
-    if not predictor.calculate_cosmic_weights():
-        return {
-            'success': False,
-            'error': '우주적 가중치 계산 실패',
-            'numbers': [],
-            'algorithm_info': predictor.get_algorithm_info()
-        }
-    
-    # 양자역학적 번호 선택
-    predicted_sets = predictor.quantum_selection(count=3, user_numbers=user_numbers)
-    
-    if not predicted_sets:
-        return {
-            'success': False,
-            'error': '양자역학적 선택 실패',
-            'numbers': [],
-            'algorithm_info': predictor.get_algorithm_info()
-        }
-    
-    # 성공 결과 반환
-    return {
-        'success': True,
-        'numbers': predicted_sets[0],  # 첫 번째 세트 반환
-        'alternative_sets': predicted_sets[1:],  # 나머지 대안들
-        'algorithm_info': predictor.get_algorithm_info(),
-        'advanced_features': len(predictor.advanced_features),
-        'data_rounds': len(predictor.df),
-        'cosmic_energy': sum(predictor.cosmic_weights.values()),
-        'timestamp': datetime.now().isoformat()
-    }
+def evaluate_quantum_combination(selected, advanced_features):
+    """양자 조합 평가"""
+    try:
+        score = 0
+        
+        # 기본 조화성
+        total_sum = sum(selected)
+        odd_count = sum(1 for n in selected if n % 2 == 1)
+        
+        if 120 <= total_sum <= 180:
+            score += 100
+        
+        if 2 <= odd_count <= 4:
+            score += 100
+        
+        # 피보나치 보너스
+        fibonacci_count = sum(1 for n in selected if n in advanced_features.get('fibonacci', {}))
+        score += fibonacci_count * 20
+        
+        # 소수 보너스
+        prime_count = sum(1 for n in selected if n in advanced_features.get('primes', {}))
+        score += prime_count * 15
+        
+        # 황금비 보너스
+        golden_count = sum(1 for n in selected if n in advanced_features.get('golden_numbers', []))
+        score += golden_count * 25
+        
+        # 연관성 점수
+        associations = advanced_features.get('associations', {})
+        association_score = 0
+        for i in range(len(selected)):
+            for j in range(i+1, len(selected)):
+                num1, num2 = selected[i], selected[j]
+                if num1 in associations and num2 in associations[num1]:
+                    association_score += associations[num1][num2]
+        
+        score += association_score * 50
+        
+        return score
+        
+    except:
+        return 0
 
-# 직접 실행 시 테스트
+def generate_smart_random():
+    """지능형 랜덤 생성"""
+    try:
+        # 통계적으로 합리적한 범위에서 선택
+        candidates = []
+        
+        # 각 구간에서 고르게 선택
+        zones = [range(1, 10), range(10, 19), range(19, 28), range(28, 37), range(37, 46)]
+        for zone in zones:
+            if random.random() > 0.3:  # 70% 확률로 각 구간에서 선택
+                candidates.append(random.choice(zone))
+        
+        # 부족하면 전체 범위에서 추가
+        while len(candidates) < 6:
+            num = random.randint(1, 45)
+            if num not in candidates:
+                candidates.append(num)
+        
+        return sorted(candidates[:6])
+        
+    except:
+        return generate_safe_fallback()
+
+def generate_safe_fallback():
+    """최후 안전장치"""
+    try:
+        return sorted(random.sample(range(1, 46), 6))
+    except:
+        return [7, 14, 21, 28, 35, 42]
+
+def validate_result(result):
+    """결과 유효성 검증"""
+    try:
+        if not isinstance(result, (list, tuple)):
+            return generate_safe_fallback()
+        
+        if len(result) != 6:
+            return generate_safe_fallback()
+        
+        # 정수 변환 및 범위 확인
+        valid_numbers = []
+        for num in result:
+            if isinstance(num, (int, float, np.number)):
+                int_num = int(num)
+                if 1 <= int_num <= 45:
+                    valid_numbers.append(int_num)
+        
+        if len(valid_numbers) != 6:
+            return generate_safe_fallback()
+        
+        # 중복 제거
+        if len(set(valid_numbers)) != 6:
+            return generate_safe_fallback()
+        
+        return sorted(valid_numbers)
+        
+    except:
+        return generate_safe_fallback()
+
+# 테스트 코드 (개발용)
 if __name__ == "__main__":
-    result = run_strongest_universe_v3()
+    # 테스트용 더미 데이터
+    import pandas as pd
+    import numpy as np
     
-    if result['success']:
-        print("🌟 Strongest Universe v3.0 예측 결과:")
-        print(f"우주 선택 번호: {', '.join(map(str, result['numbers']))}")
-        print(f"데이터 회차: {result['data_rounds']}")
-        print(f"고급 특성군: {result['advanced_features']}개")
-        print(f"우주적 에너지: {result['cosmic_energy']:.4f}")
-    else:
-        print(f"❌ 오류: {result['error']}")
+    test_data = []
+    for i in range(50):
+        numbers = sorted(random.sample(range(1, 46), 6))
+        test_data.append({
+            'round': i + 1,
+            'num1': numbers[0], 'num2': numbers[1], 'num3': numbers[2],
+            'num4': numbers[3], 'num5': numbers[4], 'num6': numbers[5],
+            'bonus_num': random.randint(1, 45)
+        })
+    
+    # 글로벌 변수 설정
+    lotto_data = pd.DataFrame(test_data)
+    
+    # 테스트 실행
+    result = predict_numbers()
+    print(f"Strongest Universe v3.0 Result: {result}")
+    print(f"Valid: {isinstance(result, list) and len(result) == 6 and all(1 <= n <= 45 for n in result)}")
