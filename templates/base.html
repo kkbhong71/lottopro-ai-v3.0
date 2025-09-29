@@ -126,11 +126,14 @@
     <script src="/static/js/github-api.js"></script>
     {% block extra_js %}{% endblock %}
     
-    <!-- 서비스 워커 등록 -->
+    <!-- ✅ Service Worker 등록 비활성화 -->
+    <!-- sw.js 파일이 없으므로 Service Worker 비활성화 -->
+    <!--
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/sw.js');
         }
     </script>
+    -->
 </body>
 </html>
