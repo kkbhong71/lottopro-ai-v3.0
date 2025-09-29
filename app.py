@@ -14,6 +14,7 @@ import time
 from functools import wraps
 import importlib.util
 import sys
+from collections import Counter  # ✅ 추가
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
@@ -166,19 +167,24 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
-            # 안전한 실행 환경 구성
+            # ✅ 수정: 안전한 실행 환경 구성 (확장)
             safe_globals = {
                 '__builtins__': {
+                    # 기본 함수들
                     'len': len, 'range': range, 'enumerate': enumerate,
                     'zip': zip, 'map': map, 'filter': filter,
                     'sum': sum, 'max': max, 'min': min, 'abs': abs,
                     'round': round, 'int': int, 'float': float,
                     'str': str, 'list': list, 'dict': dict, 'set': set,
                     'tuple': tuple, 'bool': bool, 'type': type,
+                    'sorted': sorted, 'reversed': reversed,  # ✅ 추가
+                    'any': any, 'all': all,  # ✅ 추가
+                    'isinstance': isinstance,  # ✅ 추가
                     'print': print  # 디버깅용
                 },
                 'pd': pd,
                 'np': np,
+                'Counter': Counter,  # ✅ 추가
                 'lotto_data': self.lotto_df.copy(),  # 복사본 전달
                 'data_path': str(self.data_path),
                 'datetime': datetime,
