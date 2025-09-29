@@ -16,24 +16,32 @@ class GitHubAPIManager {
         this.setupAlgorithmCards();
     }
     
-    // ===== 알고리즘 정보 로드 =====
+    // ===== 알고리즘 정보 로드 ===== [수정됨]
     async loadAlgorithmInfo() {
         try {
-            const response = await fetch('/static/algorithms/algorithm_info.json');
+            // ✅ 수정: API에서 직접 로드 (정적 파일 시도 제거)
+            const response = await fetch('/api/algorithm-info');
+            
             if (!response.ok) {
-                // 서버에서 동적으로 로드
-                const apiResponse = await fetch('/api/algorithm-info/all');
-                const data = await apiResponse.json();
-                this.algorithms = data.algorithms || {};
+                throw new Error(`API 응답 실패: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // ✅ 수정: 응답 구조에 맞게 데이터 추출
+            if (data.status === 'success' && data.info) {
+                this.algorithms = data.info.algorithms || {};
             } else {
-                const data = await response.json();
-                this.algorithms = data.algorithms || {};
+                throw new Error('알고리즘 정보를 가져올 수 없습니다');
             }
             
             console.log('알고리즘 정보 로드 완료:', Object.keys(this.algorithms).length + '개');
+            
         } catch (error) {
             console.error('알고리즘 정보 로드 실패:', error);
+            // 폴백 알고리즘 사용
             this.algorithms = this.getFallbackAlgorithms();
+            console.warn('폴백 알고리즘 사용 중');
         }
     }
     
