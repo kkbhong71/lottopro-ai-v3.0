@@ -79,7 +79,27 @@ class LottoProAI:
         try:
             with open(self.algorithm_info_path, 'r', encoding='utf-8') as f:
                 self.algorithm_info = json.load(f)
-            logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
+            
+            # ✅ 수정: 프론트엔드가 기대하는 형식으로 변환
+            if 'algorithms' in self.algorithm_info:
+                # 이미 올바른 형식
+                logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
+            else:
+                # 기존 형식을 새 형식으로 변환
+                logger.warning("Converting old algorithm info format to new format")
+                algorithms_dict = {}
+                for key, value in self.algorithm_info.items():
+                    if isinstance(value, dict) and 'name' in value:
+                        algorithms_dict[key] = value
+                
+                self.algorithm_info = {
+                    "version": "3.0",
+                    "algorithms": algorithms_dict,
+                    "categories": {},
+                    "difficulty_levels": {}
+                }
+                logger.info(f"Converted {len(algorithms_dict)} algorithms")
+                
         except FileNotFoundError:
             logger.warning("Algorithm info file not found, using default")
             self.algorithm_info = {
@@ -119,7 +139,7 @@ class LottoProAI:
         data_hash = hashlib.md5(str(len(self.lotto_df)).encode()).hexdigest()[:8]
         return f"{algorithm_id}_{data_hash}"
     
-    def execute_github_algorithm(self, algorithm_id):
+    def execute_github_algorithm(self, algorithm_id, user_numbers=None):
         """GitHub에서 알고리즘 코드를 안전하게 실행"""
         try:
             # 알고리즘 정보 확인
@@ -128,27 +148,30 @@ class LottoProAI:
             
             algorithm_info = self.algorithm_info['algorithms'][algorithm_id]
             
-            # 캐시 확인
-            cache_key = self.get_algorithm_cache_key(algorithm_id)
-            cache_file = self.cache_path / f"{cache_key}.json"
-            
-            # 캐시된 결과가 있고 1시간 이내라면 사용
-            if cache_file.exists():
-                cache_time = datetime.fromtimestamp(cache_file.stat().st_mtime)
-                if datetime.now() - cache_time < timedelta(hours=1):
-                    with open(cache_file, 'r', encoding='utf-8') as f:
-                        cached_result = json.load(f)
-                        cached_result['cached'] = True
-                        return cached_result
+            # 캐시 확인 (user_numbers가 없을 때만)
+            if not user_numbers:
+                cache_key = self.get_algorithm_cache_key(algorithm_id)
+                cache_file = self.cache_path / f"{cache_key}.json"
+                
+                # 캐시된 결과가 있고 1시간 이내라면 사용
+                if cache_file.exists():
+                    cache_time = datetime.fromtimestamp(cache_file.stat().st_mtime)
+                    if datetime.now() - cache_time < timedelta(hours=1):
+                        with open(cache_file, 'r', encoding='utf-8') as f:
+                            cached_result = json.load(f)
+                            cached_result['cached'] = True
+                            logger.info(f"Using cached result for {algorithm_id}")
+                            return cached_result
             
             # GitHub에서 코드 다운로드
-            algorithm_path = algorithm_info['github_path']
+            algorithm_path = algorithm_info.get('github_path', f'algorithms/{algorithm_id}.py')
             github_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{algorithm_path}'
             
             headers = {}
             if GITHUB_TOKEN:
                 headers['Authorization'] = f'token {GITHUB_TOKEN}'
             
+            logger.info(f"Downloading algorithm from: {github_url}")
             response = requests.get(github_url, headers=headers, timeout=30)
             
             if response.status_code != 200:
@@ -159,7 +182,7 @@ class LottoProAI:
             # 보안 검사 (기본적인 위험 코드 패턴 체크)
             dangerous_patterns = [
                 'import os', 'subprocess', 'system(',
-                'rm ', 'del ', 'remove', 'shutil'
+                'rm ', 'del ', 'remove(', 'shutil'
             ]
             
             for pattern in dangerous_patterns:
@@ -173,7 +196,7 @@ class LottoProAI:
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
-                    'pandas', 'numpy', 'pd', 'np'  # ✅ pandas와 numpy 추가
+                    'pandas', 'numpy', 'pd', 'np'
                 }
                 if name in allowed_modules:
                     return __import__(name, *args, **kwargs)
@@ -192,7 +215,7 @@ class LottoProAI:
                     'sorted': sorted, 'reversed': reversed,
                     'any': any, 'all': all,
                     'isinstance': isinstance,
-                    '__import__': safe_import,  # ✅ 제한된 import 허용
+                    '__import__': safe_import,
                     'print': print
                 },
                 'pd': pd,
@@ -201,47 +224,59 @@ class LottoProAI:
                 'lotto_data': self.lotto_df.copy(),
                 'data_path': str(self.data_path),
                 'datetime': datetime,
-                'random': np.random
+                'random': np.random,
+                'user_numbers': user_numbers or []
             }
             
             # 코드 실행
+            logger.info(f"Executing algorithm: {algorithm_id}")
             exec(code_content, safe_globals)
             
-            # 예측 함수 호출
-            if 'predict_numbers' in safe_globals:
-                result = safe_globals['predict_numbers']()
-                
-                # 결과 검증
-                if not isinstance(result, (list, tuple)) or len(result) != 6:
-                    raise Exception("Algorithm must return exactly 6 numbers")
-                
-                # 번호 범위 검증 (1-45)
-                if not all(isinstance(n, (int, np.integer)) and 1 <= n <= 45 for n in result):
-                    raise Exception("All numbers must be integers between 1 and 45")
-                
-                # 중복 검사
-                if len(set(result)) != 6:
-                    raise Exception("All numbers must be unique")
-                
-                # 결과 정리
-                prediction_result = {
-                    'status': 'success',
-                    'numbers': sorted(list(map(int, result))),
-                    'algorithm': algorithm_id,
-                    'algorithm_name': algorithm_info['name'],
-                    'accuracy_rate': algorithm_info.get('accuracy_rate', 0),
-                    'timestamp': datetime.now().isoformat(),
-                    'cached': False
-                }
-                
-                # 결과 캐싱
+            # 예측 함수 호출 (여러 함수명 시도)
+            result = None
+            for func_name in ['predict_numbers', 'predict', 'generate_numbers', 'main']:
+                if func_name in safe_globals:
+                    logger.info(f"Calling function: {func_name}")
+                    if user_numbers:
+                        result = safe_globals[func_name](user_numbers)
+                    else:
+                        result = safe_globals[func_name]()
+                    break
+            
+            if result is None:
+                raise Exception("No prediction function found (tried: predict_numbers, predict, generate_numbers, main)")
+            
+            # 결과 검증
+            if not isinstance(result, (list, tuple)) or len(result) != 6:
+                raise Exception(f"Algorithm must return exactly 6 numbers, got {len(result) if isinstance(result, (list, tuple)) else 'non-list'}")
+            
+            # 번호 범위 검증 (1-45)
+            if not all(isinstance(n, (int, np.integer)) and 1 <= n <= 45 for n in result):
+                raise Exception("All numbers must be integers between 1 and 45")
+            
+            # 중복 검사
+            if len(set(result)) != 6:
+                raise Exception("All numbers must be unique")
+            
+            # 결과 정리
+            prediction_result = {
+                'status': 'success',
+                'numbers': sorted(list(map(int, result))),
+                'algorithm': algorithm_id,
+                'algorithm_name': algorithm_info.get('name', algorithm_id),
+                'accuracy_rate': algorithm_info.get('accuracy_rate', algorithm_info.get('accuracy', 0)),
+                'timestamp': datetime.now().isoformat(),
+                'cached': False
+            }
+            
+            # 결과 캐싱 (user_numbers가 없을 때만)
+            if not user_numbers:
+                cache_file = self.cache_path / f"{self.get_algorithm_cache_key(algorithm_id)}.json"
                 with open(cache_file, 'w', encoding='utf-8') as f:
                     json.dump(prediction_result, f, ensure_ascii=False, indent=2)
-                
-                return prediction_result
-                
-            else:
-                raise Exception("predict_numbers function not found in algorithm")
+                logger.info(f"Cached result for {algorithm_id}")
+            
+            return prediction_result
                 
         except requests.RequestException as e:
             logger.error(f"Network error downloading algorithm: {str(e)}")
@@ -251,7 +286,7 @@ class LottoProAI:
                 'algorithm': algorithm_id
             }
         except Exception as e:
-            logger.error(f"Algorithm execution failed: {str(e)}")
+            logger.error(f"Algorithm execution failed: {str(e)}", exc_info=True)
             return {
                 'status': 'error',
                 'message': str(e),
@@ -379,7 +414,8 @@ class LottoProAI:
 # 전역 인스턴스 생성
 lotto_ai = LottoProAI()
 
-# 라우트 정의
+# ===== 라우트 정의 =====
+
 @app.route('/')
 def index():
     """메인 페이지"""
@@ -403,15 +439,77 @@ def algorithms():
                          categories=categories,
                          difficulty_levels=difficulty_levels)
 
+# ✅ 수정: GET 방식의 execute 엔드포인트 (기존 유지)
 @app.route('/api/execute/<algorithm_id>')
 @rate_limit(60)
 def execute_algorithm(algorithm_id):
-    """알고리즘 실행 API"""
+    """알고리즘 실행 API (GET)"""
     if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
         return jsonify({'status': 'error', 'message': 'Algorithm not found'}), 404
     
     result = lotto_ai.execute_github_algorithm(algorithm_id)
     return jsonify(result)
+
+# ✅ 추가: POST 방식의 predict 엔드포인트
+@app.route('/api/predict', methods=['POST'])
+@rate_limit(60)
+def predict_numbers():
+    """알고리즘 예측 API (POST) - github-api.js에서 사용"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': 'No data provided'
+            }), 400
+        
+        algorithm_id = data.get('algorithm')
+        user_numbers = data.get('user_numbers', [])
+        
+        if not algorithm_id:
+            return jsonify({
+                'status': 'error',
+                'message': 'Algorithm ID is required'
+            }), 400
+        
+        if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
+            return jsonify({
+                'status': 'error',
+                'message': f'Algorithm "{algorithm_id}" not found'
+            }), 404
+        
+        # 사용자 번호 검증 (선택사항)
+        if user_numbers:
+            if not isinstance(user_numbers, list):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'user_numbers must be a list'
+                }), 400
+            
+            if not all(isinstance(n, int) and 1 <= n <= 45 for n in user_numbers):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'All user numbers must be integers between 1 and 45'
+                }), 400
+            
+            if len(set(user_numbers)) != len(user_numbers):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'User numbers must be unique'
+                }), 400
+        
+        # 알고리즘 실행
+        result = lotto_ai.execute_github_algorithm(algorithm_id, user_numbers)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Predict API error: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Internal server error: {str(e)}'
+        }), 500
 
 @app.route('/api/save-prediction', methods=['POST'])
 def save_prediction():
@@ -520,18 +618,37 @@ def get_lottery_data():
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
             'total_records': len(lotto_ai.lotto_df),
-            'latest_round': lotto_ai.lotto_df['round'].max() if 'round' in lotto_ai.lotto_df.columns else 0
+            'latest_round': int(lotto_ai.lotto_df['round'].max()) if 'round' in lotto_ai.lotto_df.columns else 0
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
+# ✅ 수정: 프론트엔드가 기대하는 형식으로 응답
 @app.route('/api/algorithm-info')
 def get_all_algorithm_info():
     """전체 알고리즘 정보 조회"""
-    return jsonify({
-        'status': 'success',
-        'info': lotto_ai.algorithm_info
-    })
+    try:
+        # 중복 제거된 알고리즘 정보 반환
+        algorithms = lotto_ai.algorithm_info.get('algorithms', {})
+        
+        # 중복 제거
+        unique_algorithms = {}
+        for key, value in algorithms.items():
+            if key not in unique_algorithms:
+                unique_algorithms[key] = value
+        
+        return jsonify({
+            'status': 'success',
+            'info': unique_algorithms,  # ✅ 프론트엔드가 기대하는 형식
+            'count': len(unique_algorithms),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Failed to get algorithm info: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/algorithm-info/<algorithm_id>')
 def get_algorithm_info(algorithm_id):
@@ -556,15 +673,46 @@ def health_check():
         'version': '3.0'
     })
 
+# ===== 에러 핸들러 =====
+
 @app.errorhandler(404)
 def not_found(error):
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'status': 'error',
+            'message': 'API endpoint not found'
+        }), 404
     return jsonify({'status': 'error', 'message': 'Page not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
+    logger.error(f"Internal server error: {str(error)}", exc_info=True)
+    if request.path.startswith('/api/'):
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
     return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
+
+# ===== CORS 설정 =====
+
+@app.after_request
+def after_request(response):
+    """모든 응답에 CORS 헤더 추가"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    return response
+
+# ===== 서버 실행 =====
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"Starting LottoPro-AI v3.0 server on port {port}")
+    logger.info(f"Debug mode: {debug_mode}")
+    logger.info(f"Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
+    logger.info(f"Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
+    
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
