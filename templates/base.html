@@ -16,7 +16,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <!-- CSS -->
-    <link href="/static/css/style.css" rel="stylesheet">
+    <link href="/static/css/style.css?v=3" rel="stylesheet">
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -121,19 +121,9 @@
     <!-- 토스트 알림 -->
     <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-3"></div>
     
-    <!-- JavaScript -->
-    <script src="/static/js/main.js"></script>
-    <script src="/static/js/github-api.js"></script>
+    <!-- JavaScript - 캐시 무효화를 위한 버전 파라미터 추가 -->
+    <script src="/static/js/main.js?v=3"></script>
+    <script src="/static/js/github-api.js?v=3"></script>
     {% block extra_js %}{% endblock %}
-    
-    <!-- ✅ Service Worker 등록 비활성화 -->
-    <!-- sw.js 파일이 없으므로 Service Worker 비활성화 -->
-    <!--
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js');
-        }
-    </script>
-    -->
 </body>
 </html>
