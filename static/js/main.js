@@ -482,29 +482,3 @@ function setupPWAInstallPrompt() {
         lottoApp.showToast('LottoPro-AI가 성공적으로 설치되었습니다!', 'success', 5000);
     });
 }
-
-// ===== 서비스 워커 등록 =====
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js')
-        .then(registration => {
-            console.log('Service Worker 등록 성공:', registration.scope);
-        })
-        .catch(error => {
-            console.log('Service Worker 등록 실패:', error);
-        });
-}
-
-// ===== 서비스 워커 등록 ===== [주석 처리됨]
-// ✅ 수정: sw.js 파일이 없어서 404 에러 발생하므로 비활성화
-/*
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js')
-        .then(registration => {
-            console.log('Service Worker 등록 성공:', registration.scope);
-        })
-        .catch(error => {
-            console.log('Service Worker 등록 실패:', error);
-        });
-}
-*/
-console.log('Service Worker 비활성화됨 (sw.js 미구현)');
