@@ -1,1010 +1,534 @@
 {% extends "base.html" %}
 
-{% block title %}AI 알고리즘 - LottoPro-AI v3.0{% endblock %}
+{% block title %}AI 알고리즘{% endblock %}
 
-{% block extra_head %}
+{% block content %}
+<div class="algorithms-container">
+    <div class="algorithms-header">
+        <h1>🧠 AI 알고리즘</h1>
+        <p class="subtitle">각기 다른 방식으로 분석하는 8가지 독자적 AI 모델로<br>최고의 로또 예측 정확도를 경험해보세요</p>
+    </div>
+
+    <!-- 🔧 수정: 정렬 및 필터 컨트롤 -->
+    <div class="filter-controls">
+        <div class="control-group">
+            <label for="sort-select">
+                <span class="control-icon">📊</span>
+                정렬:
+            </label>
+            <select id="sort-select" class="control-select">
+                <option value="name">이름순</option>
+                <option value="accuracy" selected>정확도순</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="filter-select">
+                <span class="control-icon">🔍</span>
+                필터:
+            </label>
+            <select id="filter-select" class="control-select">
+                <option value="all" selected>전체</option>
+                <option value="high">높은 정확도 (85%+)</option>
+                <option value="medium">중간 정확도 (70-85%)</option>
+                <option value="low">기타 (70% 미만)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <button id="refresh-btn" class="control-button">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">새로고침</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 알고리즘 카드 그리드 -->
+    <div id="algorithm-grid" class="algorithm-grid">
+        <!-- 카드들이 여기에 동적으로 렌더링됩니다 -->
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>알고리즘 로딩 중...</p>
+        </div>
+    </div>
+</div>
+
+<!-- 🔧 신규: CSS 스타일 추가 -->
 <style>
-/* 알고리즘 페이지 전용 스타일 */
-.algorithm-preview-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--space-lg);
+.algorithms-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.algorithms-header {
     text-align: center;
-    transition: all var(--transition-normal);
-    position: relative;
-    overflow: hidden;
+    margin-bottom: 3rem;
 }
 
-.algorithm-preview-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 2px;
-    background: var(--gradient-primary);
-    transition: left var(--transition-normal);
+.algorithms-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.algorithm-preview-card:hover {
-    transform: translateY(-8px);
-    box-shadow: var(--shadow-xl), 0 0 40px rgba(102, 126, 234, 0.2);
-    border-color: rgba(102, 126, 234, 0.3);
-}
-
-.algorithm-preview-card:hover::before {
-    left: 0;
-}
-
-.algorithm-detail-card {
-    margin-bottom: var(--space-xl);
-    position: relative;
-}
-
-.card-header {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: var(--space-lg);
-    gap: var(--space-lg);
-}
-
-.algorithm-icon-large {
-    width: 80px;
-    height: 80px;
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    color: white;
-    flex-shrink: 0;
-    position: relative;
-    overflow: hidden;
-}
-
-.algorithm-icon-large::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 2px;
-    background: linear-gradient(135deg, currentColor, transparent, currentColor);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: xor;
-}
-
-.algorithm-meta {
-    flex: 1;
-}
-
-.algorithm-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--space-xs);
-}
-
-.algorithm-subtitle-large {
-    font-size: 1rem;
+.subtitle {
     color: var(--text-secondary);
-    margin-bottom: var(--space-md);
+    font-size: 1.1rem;
+    line-height: 1.6;
 }
 
-.algorithm-badges {
+/* 필터 컨트롤 스타일 */
+.filter-controls {
     display: flex;
-    gap: var(--space-xs);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    backdrop-filter: blur(10px);
     flex-wrap: wrap;
 }
 
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.control-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: var(--text-primary);
+}
+
+.control-icon {
+    font-size: 1.2rem;
+}
+
+.control-select {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.control-select:hover {
+    border-color: var(--primary);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.control-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.control-button {
+    padding: 0.5rem 1.5rem;
+    border-radius: 0.5rem;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.control-button:hover {
+    transform: translateY(-2px);
+}
+
+/* 알고리즘 그리드 */
+.algorithm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* 알고리즘 카드 */
+.algorithm-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 2rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.algorithm-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.algorithm-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    border-color: rgba(102, 126, 234, 0.5);
+}
+
+.algorithm-card:hover::before {
+    transform: scaleX(1);
+}
+
+.algorithm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.algorithm-header h3 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
 }
 
 .accuracy-badge {
-    background: var(--gradient-success);
-    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    font-size: 0.9rem;
 }
 
-.complexity-badge {
-    background: var(--gradient-warning);
-    color: white;
+.accuracy-badge.high {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
 }
 
-.time-badge {
-    background: var(--gradient-accent);
-    color: white;
+.accuracy-badge.medium {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
 }
 
-.card-body {
-    margin-bottom: var(--space-lg);
+.accuracy-badge.low {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
 }
 
 .algorithm-description {
     color: var(--text-secondary);
     line-height: 1.6;
-    margin-bottom: var(--space-md);
-}
-
-.algorithm-features h4 {
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: var(--space-sm);
-}
-
-.algorithm-features ul {
-    list-style: none;
-    padding: 0;
-}
-
-.algorithm-features li {
-    padding: var(--space-xs) 0;
-    color: var(--text-secondary);
-    position: relative;
-    padding-left: var(--space-md);
-}
-
-.algorithm-features li::before {
-    content: '✨';
-    position: absolute;
-    left: 0;
-    top: var(--space-xs);
+    margin-bottom: 1.5rem;
+    min-height: 3rem;
 }
 
 .algorithm-stats {
-    display: flex;
-    gap: var(--space-md);
-    margin-top: var(--space-md);
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
 
-.stat-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
+.stat {
+    text-align: center;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.5rem;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    margin-bottom: 0.3rem;
 }
 
-.stat-item i {
-    color: #667eea;
+.stat-value {
+    display: block;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary);
 }
 
-.card-footer {
-    display: flex;
-    gap: var(--space-md);
-    align-items: center;
-}
-
-.btn-execute {
-    flex: 1;
-    padding: var(--space-md) var(--space-lg);
-    background: var(--gradient-primary);
-    color: white;
+.run-algorithm-btn {
+    width: 100%;
+    padding: 1rem;
     border: none;
-    border-radius: var(--radius-lg);
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
-    transition: all var(--transition-normal);
-    position: relative;
-    overflow: hidden;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
 }
 
-.btn-execute:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg), 0 0 20px rgba(102, 126, 234, 0.4);
+.run-algorithm-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
-.btn-execute:disabled {
+.run-algorithm-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    transform: none;
 }
 
-.btn-shine {
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s ease;
+/* 로딩 스피너 */
+.loading-spinner {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
 }
 
-.btn-execute:hover .btn-shine {
-    left: 100%;
-}
-
-.btn-info {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-lg);
-    background: var(--glass-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.btn-info:hover {
-    background: var(--gradient-accent);
-    color: white;
-    border-color: transparent;
-}
-
-.execution-result {
-    margin-top: var(--space-lg);
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: var(--radius-lg);
-    padding: var(--space-lg);
-    border: 1px solid rgba(102, 126, 234, 0.3);
-    transition: all var(--transition-normal);
-    overflow: hidden;
-}
-
-.result-header {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-bottom: var(--space-md);
-}
-
-.result-header h4 {
-    color: var(--text-primary);
-    font-size: 1.125rem;
-    font-weight: 600;
-}
-
-.result-close {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: var(--space-xs);
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
-}
-
-.result-close:hover {
-    color: var(--text-primary);
-    background: var(--glass-bg);
-}
-
-.result-numbers {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-md);
-    margin-bottom: var(--space-lg);
-    flex-wrap: wrap;
-}
-
-.result-number {
+.spinner {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-    font-weight: 700;
-    box-shadow: var(--shadow-md);
-    animation: resultPop 0.5s ease-out;
-}
-
-@keyframes resultPop {
-    0% {
-        transform: scale(0);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-.result-metadata {
-    display: flex;
-    gap: var(--space-lg);
-    margin-bottom: var(--space-md);
-    flex-wrap: wrap;
-}
-
-.meta-item {
-    display: flex;
-    align-items: center;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.result-actions {
-    display: flex;
-    gap: var(--space-sm);
-    flex-wrap: wrap;
-}
-
-.btn-save-result,
-.btn-copy-result {
-    padding: var(--space-sm) var(--space-md);
-    background: var(--glass-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-}
-
-.btn-save-result:hover {
-    background: var(--gradient-success);
-    color: white;
-    border-color: transparent;
-}
-
-.btn-copy-result:hover {
-    background: var(--gradient-accent);
-    color: white;
-    border-color: transparent;
-}
-
-.result-error {
-    text-align: center;
-    padding: var(--space-xl);
-}
-
-.result-error h4 {
-    color: var(--text-primary);
-    margin-bottom: var(--space-sm);
-}
-
-.result-error p {
-    color: var(--text-secondary);
-    margin-bottom: var(--space-md);
-}
-
-.btn-retry {
-    padding: var(--space-sm) var(--space-lg);
-    background: var(--gradient-warning);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: inline-flex;
-    align-items: center;
-}
-
-.btn-retry:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.inline-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid white;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-right: var(--space-xs);
+    margin: 0 auto 1rem;
 }
 
-.quick-run-btn {
-    width: 100%;
-    padding: var(--space-sm) var(--space-md);
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    margin-top: var(--space-md);
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-.quick-run-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.info-modal-overlay {
+/* 예측 결과 모달 */
+.prediction-result-modal {
     position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-    z-index: 1000;
-    display: flex;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity var(--transition-normal);
-    padding: var(--space-md);
+    z-index: 1000;
+    backdrop-filter: blur(5px);
 }
 
-.info-modal-overlay.show {
-    opacity: 1;
-}
-
-.info-modal {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
+.modal-content {
+    background: var(--bg-secondary);
+    border-radius: 1.5rem;
+    padding: 2rem;
     max-width: 500px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    transform: scale(0.9);
-    transition: transform var(--transition-normal);
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalSlideUp 0.3s ease;
 }
 
-.info-modal-overlay.show .info-modal {
-    transform: scale(1);
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-lg);
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
 }
 
 .modal-header h2 {
-    color: var(--text-primary);
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.8rem;
+    margin: 0;
 }
 
-.modal-close {
+.close-modal {
     background: none;
     border: none;
-    color: var(--text-secondary);
+    font-size: 1.5rem;
     cursor: pointer;
-    padding: var(--space-xs);
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
-}
-
-.modal-close:hover {
-    color: var(--text-primary);
-    background: var(--glass-bg);
-}
-
-.modal-body {
-    padding: var(--space-lg);
-}
-
-.algorithm-detail-info h3 {
-    color: var(--text-primary);
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: var(--space-md);
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-md);
-    margin: var(--space-md) 0;
-}
-
-.info-item {
-    background: rgba(0, 0, 0, 0.2);
-    padding: var(--space-sm);
-    border-radius: var(--radius-md);
-    font-size: 0.875rem;
-}
-
-.info-item strong {
-    color: var(--text-primary);
-}
-
-.features-list {
-    margin-top: var(--space-md);
-}
-
-.features-list h4 {
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: var(--space-sm);
-}
-
-.features-list ul {
-    list-style: none;
-    padding: 0;
-}
-
-.features-list li {
-    padding: var(--space-xs) 0;
     color: var(--text-secondary);
-    position: relative;
-    padding-left: var(--space-md);
+    transition: color 0.3s ease;
 }
 
-.features-list li::before {
-    content: '⚡';
-    position: absolute;
-    left: 0;
-    top: var(--space-xs);
+.close-modal:hover {
+    color: var(--text-primary);
+}
+
+.predicted-numbers {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.lotto-number {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.result-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin: 1.5rem 0;
+}
+
+.result-info p {
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+}
+
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.save-numbers-btn,
+.close-btn {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.save-numbers-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.save-numbers-btn:hover,
+.close-btn:hover {
+    transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
-    .card-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .algorithm-icon-large {
-        margin: 0 auto var(--space-md);
-    }
-    
-    .algorithm-badges,
-    .algorithm-stats,
-    .result-metadata,
-    .result-actions {
-        justify-content: center;
-    }
-    
-    .info-grid {
+    .algorithm-grid {
         grid-template-columns: 1fr;
     }
     
-    .card-footer {
+    .filter-controls {
         flex-direction: column;
+        gap: 1rem;
     }
     
-    .btn-execute {
-        margin-bottom: var(--space-sm);
+    .control-group {
+        width: 100%;
+        justify-content: space-between;
     }
 }
 </style>
-{% endblock %}
 
-{% block content %}
-<!-- 헤더 섹션 -->
-<section class="py-20">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-16">
-            <h1 class="text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent mb-6">
-                AI 알고리즘
-            </h1>
-            <p class="text-xl md:text-2xl text-purple-200 mb-8 max-w-4xl mx-auto">
-                각기 다른 방식으로 분석하는 <span class="text-pink-300 font-bold">8가지 독자적 AI 모델</span>로<br>
-                최고의 로또 예측을 경험해보세요
-            </p>
-            
-            <!-- 통계 요약 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
-                <div class="glass-card p-6">
-                    <div class="text-3xl font-bold text-white mb-2">{{ algorithms|length }}</div>
-                    <div class="text-purple-300">AI 모델</div>
-                </div>
-                <div class="glass-card p-6">
-                    <div class="text-3xl font-bold text-white mb-2">82.3%</div>
-                    <div class="text-purple-300">최고 정확도</div>
-                </div>
-                <div class="glass-card p-6">
-                    <div class="text-3xl font-bold text-white mb-2">실시간</div>
-                    <div class="text-purple-300">GitHub 연동</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- 알고리즘 그리드 섹션 -->
-<section class="pb-20">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- 필터 및 정렬 옵션 -->
-        <div class="mb-12 flex flex-wrap gap-4 justify-center items-center">
-            <div class="glass-card px-6 py-3">
-                <label class="text-white font-medium mr-3">정렬:</label>
-                <select id="sort-algorithms" class="bg-transparent border-none text-white cursor-pointer">
-                    <option value="accuracy">정확도 순</option>
-                    <option value="speed">실행속도 순</option>
-                    <option value="complexity">복잡도 순</option>
-                    <option value="name">이름 순</option>
-                </select>
-            </div>
-            
-            <div class="glass-card px-6 py-3">
-                <label class="text-white font-medium mr-3">필터:</label>
-                <select id="filter-algorithms" class="bg-transparent border-none text-white cursor-pointer">
-                    <option value="all">전체</option>
-                    <option value="high">고정확도 (80%+)</option>
-                    <option value="fast">빠른실행 (2초 이하)</option>
-                    <option value="simple">간단함 (Low-Medium)</option>
-                </select>
-            </div>
-            
-            <button id="run-all-algorithms" class="btn-outline">
-                <i class="fas fa-play-circle mr-2"></i>
-                전체 실행 비교
-            </button>
-        </div>
-        
-        <!-- 알고리즘 카드 그리드 -->
-        <div id="algorithm-grid" class="space-y-8">
-            <!-- 알고리즘 카드들이 동적으로 로드됩니다 -->
-        </div>
-        
-        <!-- 로딩 플레이스홀더 -->
-        <div id="algorithm-loading" class="text-center py-12">
-            <div class="spinner mx-auto mb-4"></div>
-            <p class="text-purple-300">알고리즘 정보를 로드하는 중...</p>
-        </div>
-    </div>
-</section>
-
-<!-- 실행 결과 비교 모달 -->
-<div id="comparison-modal" class="info-modal-overlay hidden">
-    <div class="info-modal max-w-6xl">
-        <div class="modal-header">
-            <h2><i class="fas fa-chart-bar mr-3"></i>알고리즘 실행 결과 비교</h2>
-            <button class="modal-close" id="close-comparison">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div id="comparison-content">
-                <!-- 비교 결과가 동적으로 표시됩니다 -->
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 플로팅 실행 진행률 -->
-<div id="execution-progress" class="fixed bottom-6 left-6 glass-card p-4 hidden z-40">
-    <div class="flex items-center space-x-3">
-        <div class="spinner"></div>
-        <div>
-            <div class="text-white font-medium">알고리즘 실행 중...</div>
-            <div class="text-purple-300 text-sm">
-                <span id="current-algorithm">준비 중</span>
-                (<span id="progress-count">0</span>/8)
-            </div>
-        </div>
-    </div>
-    <div class="w-full bg-gray-700 rounded-full h-2 mt-3">
-        <div id="progress-bar" class="bg-gradient-to-r from-purple-400 to-pink-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
+<!-- 🔧 신규: JavaScript로 정렬/필터 기능 연결 -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    initializeAlgorithmPage();
-});
-
-async function initializeAlgorithmPage() {
-    // GitHub 매니저가 초기화될 때까지 대기
-    if (!window.githubManager) {
-        setTimeout(initializeAlgorithmPage, 100);
-        return;
-    }
-    
-    // 로딩 숨기기
-    document.getElementById('algorithm-loading').style.display = 'none';
-    
-    // 정렬 및 필터 이벤트 리스너
-    setupSortingAndFiltering();
-    
-    // 전체 실행 버튼
-    setupBulkExecution();
-    
     console.log('🧠 알고리즘 페이지 초기화 완료');
-}
 
-function setupSortingAndFiltering() {
-    const sortSelect = document.getElementById('sort-algorithms');
-    const filterSelect = document.getElementById('filter-algorithms');
-    
-    sortSelect.addEventListener('change', () => sortAlgorithms(sortSelect.value));
-    filterSelect.addEventListener('change', () => filterAlgorithms(filterSelect.value));
-}
-
-function sortAlgorithms(sortBy) {
-    const grid = document.getElementById('algorithm-grid');
-    const cards = Array.from(grid.children);
-    
-    cards.sort((a, b) => {
-        const aAlgo = getAlgorithmFromCard(a);
-        const bAlgo = getAlgorithmFromCard(b);
-        
-        switch(sortBy) {
-            case 'accuracy':
-                return parseFloat(bAlgo.accuracy) - parseFloat(aAlgo.accuracy);
-            case 'speed':
-                return getExecutionTime(aAlgo) - getExecutionTime(bAlgo);
-            case 'complexity':
-                return getComplexityValue(aAlgo) - getComplexityValue(bAlgo);
-            case 'name':
-                return aAlgo.name.localeCompare(bAlgo.name);
-            default:
-                return 0;
-        }
-    });
-    
-    // 카드 재배치
-    cards.forEach(card => grid.appendChild(card));
-    
-    // 재애니메이션
-    window.githubManager.animateCards(cards);
-}
-
-function filterAlgorithms(filterBy) {
-    const cards = document.querySelectorAll('.algorithm-detail-card');
-    
-    cards.forEach(card => {
-        const algorithm = getAlgorithmFromCard(card);
-        let show = true;
-        
-        switch(filterBy) {
-            case 'high':
-                show = parseFloat(algorithm.accuracy) >= 80;
-                break;
-            case 'fast':
-                show = getExecutionTime(algorithm) <= 2;
-                break;
-            case 'simple':
-                show = ['Low', 'Medium'].includes(algorithm.complexity);
-                break;
-            case 'all':
-            default:
-                show = true;
-        }
-        
-        card.style.display = show ? 'block' : 'none';
-    });
-}
-
-function setupBulkExecution() {
-    const bulkBtn = document.getElementById('run-all-algorithms');
-    if (!bulkBtn) return;
-    
-    bulkBtn.addEventListener('click', async () => {
-        await runAllAlgorithms();
-    });
-}
-
-async function runAllAlgorithms() {
-    const algorithms = window.githubManager.algorithms;
-    const algorithmIds = Object.keys(algorithms);
-    const results = {};
-    
-    // 진행률 표시
-    const progressContainer = document.getElementById('execution-progress');
-    const progressBar = document.getElementById('progress-bar');
-    const progressCount = document.getElementById('progress-count');
-    const currentAlgoName = document.getElementById('current-algorithm');
-    
-    progressContainer.classList.remove('hidden');
-    
-    try {
-        for (let i = 0; i < algorithmIds.length; i++) {
-            const algorithmId = algorithmIds[i];
-            const algorithm = algorithms[algorithmId];
+    // 정렬 선택 이벤트
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const sortBy = this.value;
+            const filterBy = document.getElementById('filter-select')?.value || 'all';
             
-            // 진행률 업데이트
-            const progress = ((i + 1) / algorithmIds.length) * 100;
-            progressBar.style.width = progress + '%';
-            progressCount.textContent = i + 1;
-            currentAlgoName.textContent = algorithm.name;
+            console.log('정렬 변경:', sortBy);
             
-            try {
-                const result = await window.githubManager.executeAlgorithm(algorithmId);
-                results[algorithmId] = {
-                    ...result,
-                    algorithm: algorithm
-                };
-            } catch (error) {
-                results[algorithmId] = {
-                    status: 'error',
-                    message: error.message,
-                    algorithm: algorithm
-                };
+            if (window.githubAPIManager) {
+                window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+            }
+        });
+    }
+
+    // 필터 선택 이벤트
+    const filterSelect = document.getElementById('filter-select');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            const filterBy = this.value;
+            const sortBy = document.getElementById('sort-select')?.value || 'name';
+            
+            console.log('필터 변경:', filterBy);
+            
+            if (window.githubAPIManager) {
+                window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+            }
+        });
+    }
+
+    // 새로고침 버튼 이벤트
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async function() {
+            console.log('새로고침 시작');
+            
+            this.disabled = true;
+            this.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">로딩 중...</span>';
+            
+            if (window.githubAPIManager) {
+                await window.githubAPIManager.loadAlgorithmInfo();
+                
+                const sortBy = document.getElementById('sort-select')?.value || 'name';
+                const filterBy = document.getElementById('filter-select')?.value || 'all';
+                
+                window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
             }
             
-            // 각 실행 사이에 짧은 지연
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        // 결과 비교 모달 표시
-        showComparisonModal(results);
-        
-    } finally {
-        progressContainer.classList.add('hidden');
-    }
-}
-
-function showComparisonModal(results) {
-    const modal = document.getElementById('comparison-modal');
-    const content = document.getElementById('comparison-content');
-    
-    content.innerHTML = generateComparisonHTML(results);
-    modal.classList.remove('hidden');
-    setTimeout(() => modal.classList.add('show'), 10);
-    
-    // 닫기 버튼 이벤트
-    document.getElementById('close-comparison').addEventListener('click', closeComparisonModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeComparisonModal();
-    });
-}
-
-function closeComparisonModal() {
-    const modal = document.getElementById('comparison-modal');
-    modal.classList.remove('show');
-    setTimeout(() => modal.classList.add('hidden'), 300);
-}
-
-function generateComparisonHTML(results) {
-    const successResults = Object.entries(results).filter(([id, result]) => result.status === 'success');
-    const errorResults = Object.entries(results).filter(([id, result]) => result.status === 'error');
-    
-    let html = `
-        <div class="comparison-summary mb-8">
-            <h3 class="text-xl font-bold text-white mb-4">실행 요약</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400">${successResults.length}</div>
-                    <div class="text-sm text-green-300">성공</div>
-                </div>
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-bold text-red-400">${errorResults.length}</div>
-                    <div class="text-sm text-red-300">실패</div>
-                </div>
-                <div class="glass-card p-4 text-center">
-                    <div class="text-2xl font-bold text-purple-400">${Object.keys(results).length}</div>
-                    <div class="text-sm text-purple-300">총 실행</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    if (successResults.length > 0) {
-        html += `
-            <div class="comparison-results mb-8">
-                <h3 class="text-xl font-bold text-white mb-4">예측 결과 비교</h3>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        `;
-        
-        successResults.forEach(([id, result]) => {
-            html += `
-                <div class="result-card glass-card p-4">
-                    <div class="flex items-center mb-3">
-                        <div class="algorithm-icon w-8 h-8 rounded-lg mr-3 flex items-center justify-center text-white" style="background: ${result.algorithm.color}">
-                            ${result.algorithm.icon}
-                        </div>
-                        <div>
-                            <div class="font-medium text-white">${result.algorithm.name}</div>
-                            <div class="text-sm text-gray-400">${result.algorithm.accuracy}</div>
-                        </div>
-                    </div>
-                    <div class="result-numbers flex gap-2 mb-3">
-                        ${result.numbers.map(num => `
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm flex items-center justify-center font-bold">
-                                ${num}
-                            </div>
-                        `).join('')}
-                    </div>
-                    <button class="btn-save-result w-full text-sm" onclick="saveComparisonResult('${id}', [${result.numbers.join(',')}])">
-                        <i class="fas fa-save mr-2"></i>이 결과 저장
-                    </button>
-                </div>
-            `;
+            this.disabled = false;
+            this.innerHTML = '<span class="btn-icon">🔄</span><span class="btn-text">새로고침</span>';
+            
+            console.log('새로고침 완료');
         });
-        
-        html += `</div></div>`;
-        
-        // 번호 빈도 분석
-        html += generateFrequencyAnalysis(successResults);
     }
-    
-    if (errorResults.length > 0) {
-        html += `
-            <div class="error-results">
-                <h3 class="text-xl font-bold text-white mb-4">실행 오류</h3>
-                <div class="space-y-3">
-        `;
-        
-        errorResults.forEach(([id, result]) => {
-            html += `
-                <div class="error-card bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-                    <div class="flex items-center mb-2">
-                        <i class="fas fa-exclamation-triangle text-red-400 mr-2"></i>
-                        <span class="font-medium text-white">${result.algorithm.name}</span>
-                    </div>
-                    <div class="text-sm text-red-300">${result.message}</div>
-                </div>
-            `;
-        });
-        
-        html += `</div></div>`;
-    }
-    
-    return html;
-}
+});
 
-function generateFrequencyAnalysis(successResults) {
-    const numberFreq = {};
+// 번호 저장 함수 (전역)
+function saveNumbers(numbers) {
+    console.log('번호 저장:', numbers);
     
-    successResults.forEach(([id, result]) => {
-        result.numbers.forEach(num => {
-            numberFreq[num] = (numberFreq[num] || 0) + 1;
-        });
+    // localStorage에 저장
+    const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+    savedNumbers.push({
+        numbers: numbers,
+        timestamp: new Date().toISOString(),
+        algorithm: 'AI 예측'
     });
+    localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
     
-    const sortedNumbers = Object.entries(numberFreq)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 10);
-    
-    let html = `
-        <div class="frequency-analysis mb-8">
-            <h3 class="text-xl font-bold text-white mb-4">번호 출현 빈도</h3>
-            <div class="grid grid-cols-5 md:grid-cols-10 gap-3">
-    `;
-    
-    sortedNumbers.forEach(([number, count]) => {
-        const percentage = (count / successResults.length) * 100;
-        html += `
-            <div class="frequency-item text-center">
-                <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold flex items-center justify-center mb-2">
-                    ${number}
-                </div>
-                <div class="text-xs text-gray-400">${count}회</div>
-                <div class="text-xs text-purple-300">${percentage.toFixed(0)}%</div>
-            </div>
-        `;
-    });
-    
-    html += `</div></div>`;
-    
-    return html;
-}
-
-// 유틸리티 함수들
-function getAlgorithmFromCard(card) {
-    const algorithmId = card.querySelector('[data-algorithm]')?.dataset.algorithm;
-    return window.githubManager.algorithms[algorithmId] || {};
-}
-
-function getExecutionTime(algorithm) {
-    const timeStr = algorithm.execution_time || '~2초';
-    return parseFloat(timeStr.replace(/[^\d.]/g, '')) || 2;
-}
-
-function getComplexityValue(algorithm) {
-    const complexity = algorithm.complexity || 'Medium';
-    const values = { 'Low': 1, 'Medium': 2, 'Medium-High': 3, 'High': 4, 'Extreme': 5 };
-    return values[complexity] || 2;
-}
-
-async function saveComparisonResult(algorithmId, numbers) {
-    if (window.githubManager) {
-        await window.githubManager.savePrediction(numbers, algorithmId);
-    }
+    alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
 }
 </script>
+
 {% endblock %}
