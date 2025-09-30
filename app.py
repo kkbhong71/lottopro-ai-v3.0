@@ -172,7 +172,8 @@ class LottoProAI:
                 allowed_modules = {
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
-                    'operator', 'bisect', 'heapq', 'array'
+                    'operator', 'bisect', 'heapq', 'array',
+                    'pandas', 'numpy', 'pd', 'np'  # ✅ pandas와 numpy 추가
                 }
                 if name in allowed_modules:
                     return __import__(name, *args, **kwargs)
