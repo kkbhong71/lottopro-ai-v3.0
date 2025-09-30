@@ -1,5 +1,5 @@
 /**
- * GitHub API 연동 모듈 v3.0
+ * GitHub API 연동 모듈 v3.0 - 이벤트 위임 방식
  * 알고리즘 코드 실행 및 관리
  */
 
@@ -11,7 +11,7 @@ class GitHubAPIManager {
         this.isInitialized = false;
         this.initPromise = null;
         
-        console.log('🔧 GitHubAPIManager 생성됨');
+        console.log('GitHubAPIManager 생성됨');
     }
     
     async init() {
@@ -21,13 +21,13 @@ class GitHubAPIManager {
         
         this.initPromise = (async () => {
             try {
-                console.log('⏳ 알고리즘 정보 로드 시작...');
+                console.log('알고리즘 정보 로드 시작...');
                 await this.loadAlgorithmInfo();
                 this.setupAlgorithmCards();
                 this.isInitialized = true;
-                console.log('✅ GitHubAPIManager 초기화 완료');
+                console.log('GitHubAPIManager 초기화 완료');
             } catch (error) {
-                console.error('❌ GitHubAPIManager 초기화 실패:', error);
+                console.error('GitHubAPIManager 초기화 실패:', error);
                 this.isInitialized = false;
             }
         })();
@@ -44,7 +44,7 @@ class GitHubAPIManager {
     // ===== 알고리즘 정보 로드 =====
     async loadAlgorithmInfo() {
         try {
-            console.log('📡 API 호출: /api/algorithm-info');
+            console.log('API 호출: /api/algorithm-info');
             
             const response = await fetch('/api/algorithm-info');
             
@@ -53,20 +53,20 @@ class GitHubAPIManager {
             }
             
             const data = await response.json();
-            console.log('📦 API 응답 받음:', data);
+            console.log('API 응답 받음:', data);
             
             if (data.status === 'success' && data.info && data.info.algorithms) {
                 this.algorithms = data.info.algorithms;
-                console.log(`✅ 알고리즘 ${Object.keys(this.algorithms).length}개 로드 완료`);
-                console.log('📋 로드된 알고리즘:', Object.keys(this.algorithms));
+                console.log(`알고리즘 ${Object.keys(this.algorithms).length}개 로드 완료`);
+                console.log('로드된 알고리즘:', Object.keys(this.algorithms));
             } else {
-                console.warn('⚠️ 예상치 못한 API 응답 구조:', data);
+                console.warn('예상치 못한 API 응답 구조:', data);
                 throw new Error('알고리즘 정보 구조가 올바르지 않습니다');
             }
             
         } catch (error) {
-            console.error('❌ 알고리즘 정보 로드 실패:', error);
-            console.warn('🔄 폴백 알고리즘 사용');
+            console.error('알고리즘 정보 로드 실패:', error);
+            console.warn('폴백 알고리즘 사용');
             this.algorithms = this.getFallbackAlgorithms();
         }
     }
@@ -94,12 +94,12 @@ class GitHubAPIManager {
         const algorithmGrid = document.getElementById('algorithm-grid');
         
         if (previewContainer) {
-            console.log('🎨 미리보기 카드 렌더링 시작');
+            console.log('미리보기 카드 렌더링 시작');
             this.renderAlgorithmPreview(previewContainer);
         }
         
         if (algorithmGrid) {
-            console.log('🎨 전체 카드 그리드 렌더링 시작');
+            console.log('전체 카드 그리드 렌더링 시작');
             this.renderAlgorithmGrid(algorithmGrid);
         }
     }
@@ -110,7 +110,7 @@ class GitHubAPIManager {
         const topAlgorithms = Object.entries(this.algorithms).slice(0, 4);
         
         if (topAlgorithms.length === 0) {
-            console.warn('⚠️ 표시할 알고리즘이 없습니다');
+            console.warn('표시할 알고리즘이 없습니다');
             container.innerHTML = '<p class="text-white">알고리즘을 로드할 수 없습니다.</p>';
             return;
         }
@@ -121,7 +121,19 @@ class GitHubAPIManager {
         });
         
         this.animateCards(container.children);
-        console.log(`✅ 미리보기 카드 ${topAlgorithms.length}개 렌더링 완료`);
+        console.log(`미리보기 카드 ${topAlgorithms.length}개 렌더링 완료`);
+        
+        // 이벤트 위임 설정
+        container.addEventListener('click', (e) => {
+            const quickRunBtn = e.target.closest('.quick-run-btn');
+            if (quickRunBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const algorithmId = quickRunBtn.dataset.algorithm;
+                console.log(`빠른 실행 클릭: ${algorithmId}`);
+                this.executeAlgorithm(algorithmId);
+            }
+        });
     }
     
     renderAlgorithmGrid(container) {
@@ -130,7 +142,7 @@ class GitHubAPIManager {
         const algorithms = Object.entries(this.algorithms);
         
         if (algorithms.length === 0) {
-            console.warn('⚠️ 표시할 알고리즘이 없습니다');
+            console.warn('표시할 알고리즘이 없습니다');
             container.innerHTML = '<p class="text-white text-center">알고리즘을 로드할 수 없습니다.</p>';
             return;
         }
@@ -141,7 +153,83 @@ class GitHubAPIManager {
         });
         
         this.animateCards(container.children);
-        console.log(`✅ 전체 카드 ${algorithms.length}개 렌더링 완료`);
+        console.log(`전체 카드 ${algorithms.length}개 렌더링 완료`);
+        
+        // 이벤트 위임으로 모든 버튼 클릭 처리
+        container.addEventListener('click', (e) => {
+            // 실행 버튼 클릭
+            const executeBtn = e.target.closest('.btn-execute');
+            if (executeBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const algorithmId = executeBtn.dataset.algorithm;
+                const card = executeBtn.closest('.algorithm-detail-card');
+                console.log(`실행 버튼 클릭 (위임): ${algorithmId}`);
+                this.executeAlgorithm(algorithmId, card);
+                return;
+            }
+            
+            // 정보 버튼 클릭
+            const infoBtn = e.target.closest('.btn-info');
+            if (infoBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const algorithmId = infoBtn.dataset.algorithm;
+                const algorithm = this.algorithms[algorithmId];
+                console.log(`정보 버튼 클릭 (위임): ${algorithmId}`);
+                this.showAlgorithmInfo(algorithmId, algorithm);
+                return;
+            }
+            
+            // 결과 닫기 버튼
+            const closeBtn = e.target.closest('.result-close');
+            if (closeBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const resultContainer = closeBtn.closest('.execution-result');
+                if (resultContainer) {
+                    const algorithmId = resultContainer.id.replace('result-', '');
+                    console.log(`결과 닫기 클릭: ${algorithmId}`);
+                    this.hideResult(algorithmId);
+                }
+                return;
+            }
+            
+            // 저장 버튼
+            const saveBtn = e.target.closest('.btn-save-result');
+            if (saveBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const numbers = saveBtn.dataset.numbers.split(',').map(n => parseInt(n));
+                const algorithmId = saveBtn.dataset.algorithm;
+                console.log(`저장 버튼 클릭: ${algorithmId}`);
+                this.savePrediction(numbers, algorithmId);
+                return;
+            }
+            
+            // 복사 버튼
+            const copyBtn = e.target.closest('.btn-copy-result');
+            if (copyBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const numbers = copyBtn.dataset.numbers;
+                console.log(`복사 버튼 클릭`);
+                this.copyToClipboard(numbers);
+                return;
+            }
+            
+            // 재시도 버튼
+            const retryBtn = e.target.closest('.btn-retry');
+            if (retryBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const algorithmId = retryBtn.dataset.algorithm;
+                const card = retryBtn.closest('.algorithm-detail-card');
+                console.log(`재시도 버튼 클릭: ${algorithmId}`);
+                this.executeAlgorithm(algorithmId, card);
+                return;
+            }
+        });
     }
     
     createAlgorithmPreviewCard(id, algorithm) {
@@ -161,14 +249,6 @@ class GitHubAPIManager {
                 <i class="fas fa-play mr-2"></i>빠른 실행
             </button>
         `;
-        
-        const btn = card.querySelector('.quick-run-btn');
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log(`🎯 빠른 실행 클릭: ${id}`);
-            this.executeAlgorithm(id);
-        });
         
         return card;
     }
@@ -246,49 +326,18 @@ class GitHubAPIManager {
             </div>
         `;
         
-        // 이벤트 리스너
-        const executeBtn = card.querySelector('.btn-execute');
-        const infoBtn = card.querySelector('.btn-info');
-        const closeBtn = card.querySelector('.result-close');
-        
-        if (executeBtn) {
-            executeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`🚀 알고리즘 실행 버튼 클릭: ${id}`);
-                this.executeAlgorithm(id, card);
-            });
-        }
-        
-        if (infoBtn) {
-            infoBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`ℹ️ 정보 버튼 클릭: ${id}`);
-                this.showAlgorithmInfo(id, algorithm);
-            });
-        }
-        
-        if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.hideResult(id);
-            });
-        }
-        
         return card;
     }
     
     // ===== 알고리즘 실행 =====
     async executeAlgorithm(algorithmId, cardElement = null) {
-        console.log(`🎯 알고리즘 실행 시작: ${algorithmId}`);
+        console.log(`알고리즘 실행 시작: ${algorithmId}`);
         
         await this.ensureInitialized();
         
         const algorithm = this.algorithms[algorithmId];
         if (!algorithm) {
-            console.error(`❌ 알고리즘을 찾을 수 없음: ${algorithmId}`);
+            console.error(`알고리즘을 찾을 수 없음: ${algorithmId}`);
             window.showToast('알고리즘을 찾을 수 없습니다', 'error');
             return null;
         }
@@ -299,7 +348,7 @@ class GitHubAPIManager {
             this.showExecutionLoading(algorithmId, cardElement);
             window.showLoading(`${algorithm.name} 실행 중...`);
             
-            console.log(`📡 API 호출: /api/execute/${algorithmId}`);
+            console.log(`API 호출: /api/execute/${algorithmId}`);
             
             const response = await fetch(`${this.baseURL}/execute/${algorithmId}`, {
                 method: 'GET',
@@ -308,29 +357,29 @@ class GitHubAPIManager {
                 }
             });
             
-            console.log(`📥 응답 받음: ${response.status} ${response.statusText}`);
+            console.log(`응답 받음: ${response.status} ${response.statusText}`);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const result = await response.json();
-            console.log('📦 실행 결과:', result);
+            console.log('실행 결과:', result);
             
             if (result.status === 'success') {
-                console.log(`✅ 실행 성공: ${result.numbers}`);
+                console.log(`실행 성공: ${result.numbers}`);
                 this.handleExecutionSuccess(algorithmId, result, cardElement);
                 window.showToast(`${algorithm.name} 실행 완료!`, 'success');
                 return result;
             } else {
-                console.error(`❌ 실행 실패: ${result.message}`);
+                console.error(`실행 실패: ${result.message}`);
                 this.handleExecutionError(algorithmId, result.message, cardElement);
                 window.showToast(result.message || '알고리즘 실행 중 오류 발생', 'error');
                 return null;
             }
             
         } catch (error) {
-            console.error('❌ 알고리즘 실행 중 예외 발생:', error);
+            console.error('알고리즘 실행 중 예외 발생:', error);
             console.error('에러 스택:', error.stack);
             this.handleExecutionError(algorithmId, error.message, cardElement);
             window.showToast('네트워크 오류가 발생했습니다', 'error');
@@ -340,7 +389,7 @@ class GitHubAPIManager {
             this.hideExecutionLoading(algorithmId, cardElement);
             
             const duration = performance.now() - startTime;
-            console.log(`⏱️ 실행 시간: ${duration.toFixed(2)}ms`);
+            console.log(`실행 시간: ${duration.toFixed(2)}ms`);
         }
     }
     
@@ -413,7 +462,7 @@ class GitHubAPIManager {
     showResultInCard(algorithmId, result, cardElement) {
         const resultContainer = cardElement.querySelector(`#result-${algorithmId}`);
         if (!resultContainer) {
-            console.warn(`⚠️ 결과 컨테이너를 찾을 수 없음: result-${algorithmId}`);
+            console.warn(`결과 컨테이너를 찾을 수 없음: result-${algorithmId}`);
             return;
         }
         
@@ -450,24 +499,6 @@ class GitHubAPIManager {
                     </button>
                 </div>
             `;
-            
-            const saveBtn = resultContent.querySelector('.btn-save-result');
-            const copyBtn = resultContent.querySelector('.btn-copy-result');
-            
-            if (saveBtn) {
-                saveBtn.addEventListener('click', () => {
-                    console.log('💾 저장 버튼 클릭');
-                    this.savePrediction(result.numbers, algorithmId);
-                });
-            }
-            
-            if (copyBtn) {
-                copyBtn.addEventListener('click', () => {
-                    console.log('📋 복사 버튼 클릭');
-                    this.copyToClipboard(result.numbers.join(', '));
-                });
-            }
-            
         } else {
             resultContent.innerHTML = `
                 <div class="result-error">
@@ -479,14 +510,6 @@ class GitHubAPIManager {
                     </button>
                 </div>
             `;
-            
-            const retryBtn = resultContent.querySelector('.btn-retry');
-            if (retryBtn) {
-                retryBtn.addEventListener('click', () => {
-                    console.log('🔄 재시도 버튼 클릭');
-                    this.executeAlgorithm(algorithmId, cardElement);
-                });
-            }
         }
         
         resultContainer.classList.remove('hidden');
@@ -550,7 +573,7 @@ class GitHubAPIManager {
     }
     
     async savePrediction(numbers, algorithmId) {
-        console.log('💾 예측 저장 시작:', { numbers, algorithmId });
+        console.log('예측 저장 시작:', { numbers, algorithmId });
         
         try {
             const response = await fetch('/api/save-prediction', {
@@ -567,7 +590,7 @@ class GitHubAPIManager {
             });
             
             const result = await response.json();
-            console.log('📥 저장 응답:', result);
+            console.log('저장 응답:', result);
             
             if (result.status === 'success') {
                 window.showToast('예측이 저장되었습니다!', 'success');
@@ -579,7 +602,7 @@ class GitHubAPIManager {
             }
             
         } catch (error) {
-            console.error('❌ 예측 저장 실패:', error);
+            console.error('예측 저장 실패:', error);
             window.showToast('네트워크 오류가 발생했습니다', 'error');
         }
     }
@@ -608,7 +631,7 @@ class GitHubAPIManager {
     }
     
     showAlgorithmInfo(algorithmId, algorithm) {
-        console.log('ℹ️ 알고리즘 정보 표시:', algorithmId);
+        console.log('알고리즘 정보 표시:', algorithmId);
         const modal = this.createInfoModal(algorithm);
         document.body.appendChild(modal);
         
@@ -691,7 +714,7 @@ class GitHubAPIManager {
         try {
             localStorage.setItem('lotto_execution_history', JSON.stringify(this.executionHistory.slice(0, 50)));
         } catch (e) {
-            console.warn('⚠️ localStorage 저장 실패:', e);
+            console.warn('localStorage 저장 실패:', e);
         }
     }
 }
@@ -700,7 +723,7 @@ class GitHubAPIManager {
 let githubManager = null;
 
 async function loadAlgorithmPreview() {
-    console.log('🔄 loadAlgorithmPreview 호출됨');
+    console.log('loadAlgorithmPreview 호출됨');
     if (!githubManager) {
         githubManager = new GitHubAPIManager();
         await githubManager.init();
@@ -708,7 +731,7 @@ async function loadAlgorithmPreview() {
 }
 
 async function executeAlgorithm(algorithmId) {
-    console.log(`🔄 executeAlgorithm 호출됨: ${algorithmId}`);
+    console.log(`executeAlgorithm 호출됨: ${algorithmId}`);
     if (!githubManager) {
         githubManager = new GitHubAPIManager();
         await githubManager.init();
@@ -719,7 +742,7 @@ async function executeAlgorithm(algorithmId) {
 
 // ===== DOMContentLoaded 초기화 =====
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 DOMContentLoaded - GitHubAPIManager 초기화 시작');
+    console.log('DOMContentLoaded - GitHubAPIManager 초기화 시작');
     
     try {
         githubManager = new GitHubAPIManager();
@@ -730,15 +753,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.executeAlgorithm = executeAlgorithm;
         window.loadAlgorithmPreview = loadAlgorithmPreview;
         
-        console.log('✅ GitHubAPIManager 전역 등록 완료');
-        console.log('📊 상태:', {
+        console.log('GitHubAPIManager 전역 등록 완료');
+        console.log('상태:', {
             initialized: githubManager.isInitialized,
             algorithmCount: Object.keys(githubManager.algorithms).length
         });
         
     } catch (error) {
-        console.error('❌ GitHubAPIManager 초기화 중 오류:', error);
+        console.error('GitHubAPIManager 초기화 중 오류:', error);
     }
 });
 
-console.log('📜 github-api.js 로드 완료');
+console.log('github-api.js 로드 완료');
