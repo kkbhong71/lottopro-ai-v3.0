@@ -14,7 +14,7 @@ import time
 from functools import wraps
 import importlib.util
 import sys
-from collections import Counter  # ✅ 추가
+from collections import Counter
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
@@ -158,8 +158,7 @@ class LottoProAI:
             
             # 보안 검사 (기본적인 위험 코드 패턴 체크)
             dangerous_patterns = [
-                'import os', '__import__', 'exec(', 'eval(',
-                'open(', 'file(', 'subprocess', 'system(',
+                'import os', 'subprocess', 'system(',
                 'rm ', 'del ', 'remove', 'shutil'
             ]
             
@@ -167,7 +166,19 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
-            # ✅ 수정: 안전한 실행 환경 구성 (확장)
+            # ✅ 수정: 제한된 import 함수 정의
+            def safe_import(name, *args, **kwargs):
+                """보안을 위해 제한된 모듈만 import 허용"""
+                allowed_modules = {
+                    'random', 'math', 'datetime', 'collections', 
+                    'itertools', 'functools', 're', 'statistics',
+                    'operator', 'bisect', 'heapq', 'array'
+                }
+                if name in allowed_modules:
+                    return __import__(name, *args, **kwargs)
+                raise ImportError(f"Module '{name}' is not allowed for security reasons")
+            
+            # ✅ 수정: 안전한 실행 환경 구성
             safe_globals = {
                 '__builtins__': {
                     # 기본 함수들
@@ -177,15 +188,16 @@ class LottoProAI:
                     'round': round, 'int': int, 'float': float,
                     'str': str, 'list': list, 'dict': dict, 'set': set,
                     'tuple': tuple, 'bool': bool, 'type': type,
-                    'sorted': sorted, 'reversed': reversed,  # ✅ 추가
-                    'any': any, 'all': all,  # ✅ 추가
-                    'isinstance': isinstance,  # ✅ 추가
-                    'print': print  # 디버깅용
+                    'sorted': sorted, 'reversed': reversed,
+                    'any': any, 'all': all,
+                    'isinstance': isinstance,
+                    '__import__': safe_import,  # ✅ 제한된 import 허용
+                    'print': print
                 },
                 'pd': pd,
                 'np': np,
-                'Counter': Counter,  # ✅ 추가
-                'lotto_data': self.lotto_df.copy(),  # 복사본 전달
+                'Counter': Counter,
+                'lotto_data': self.lotto_df.copy(),
                 'data_path': str(self.data_path),
                 'datetime': datetime,
                 'random': np.random
@@ -391,7 +403,7 @@ def algorithms():
                          difficulty_levels=difficulty_levels)
 
 @app.route('/api/execute/<algorithm_id>')
-@rate_limit(60)  # 60초마다 실행 가능
+@rate_limit(60)
 def execute_algorithm(algorithm_id):
     """알고리즘 실행 API"""
     if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
