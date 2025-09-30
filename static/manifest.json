@@ -13,115 +13,11 @@
   "categories": ["entertainment", "utilities", "lifestyle"],
   "dir": "ltr",
   
-  "icons": [
-    {
-      "src": "/static/img/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/img/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
+  "icons": [],
   
-  "screenshots": [
-    {
-      "src": "/static/img/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "LottoPro-AI 데스크톱 화면"
-    },
-    {
-      "src": "/static/img/screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "LottoPro-AI 모바일 화면"
-    }
-  ],
+  "screenshots": [],
   
-  "shortcuts": [
-    {
-      "name": "AI 예측",
-      "short_name": "예측",
-      "description": "AI 알고리즘으로 로또 번호 예측",
-      "url": "/algorithms",
-      "icons": [
-        {
-          "src": "/static/img/shortcut-predict.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "저장된 번호",
-      "short_name": "번호",
-      "description": "저장된 예측 번호 관리",
-      "url": "/saved-numbers",
-      "icons": [
-        {
-          "src": "/static/img/shortcut-saved.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "결과 비교",
-      "short_name": "비교",
-      "description": "예측 결과 분석 및 비교",
-      "url": "/compare",
-      "icons": [
-        {
-          "src": "/static/img/shortcut-compare.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    }
-  ],
+  "shortcuts": [],
   
   "related_applications": [
     {
@@ -131,17 +27,6 @@
   ],
   
   "prefer_related_applications": false,
-  
-  "protocol_handlers": [
-    {
-      "protocol": "web+lottopro",
-      "url": "/?prediction=%s"
-    }
-  ],
-  
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
   
   "launch_handler": {
     "client_mode": "navigate-existing"
