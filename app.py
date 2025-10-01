@@ -109,7 +109,7 @@ class LottoProAI:
     def load_lotto_data(self):
         """로또 당첨번호 데이터 로드"""
         try:
-            # 최신 회차 파일로 변경
+            # 최신 회차 파일로 변경 (1191)
             csv_path = self.data_path / 'new_1191.csv'
             if not csv_path.exists():
                 csv_path = Path('new_1191.csv')
@@ -119,7 +119,7 @@ class LottoProAI:
             # 컬럼명 표준화
             expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
             if list(self.lotto_df.columns) == expected_columns:
-                logger.info(f"Loaded {len(self.lotto_df)} lottery records")
+                logger.info(f"Loaded {len(self.lotto_df)} lottery records (최신 회차: 1191)")
             else:
                 logger.warning(f"Column names may not match expected format: {list(self.lotto_df.columns)}")
                 
@@ -185,15 +185,16 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
-            # 제한된 import 함수 정의 (핵심 수정!)
+            # 제한된 import 함수 정의 (수정됨!)
             def safe_import(name, *args, **kwargs):
                 """보안을 위해 제한된 모듈만 import 허용"""
+                # ✅ 수정: Set에 모든 항목을 올바르게 포함
                 allowed_modules = {
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
-                    'pandas', 'numpy', 'pd', 'np',  # 쉼표 추가!
-                    'warnings'  # 이제 독립된 항목
+                    'pandas', 'numpy', 'pd', 'np',
+                    'warnings'  # 이제 올바르게 Set의 일부
                 }
                 if name in allowed_modules:
                     return __import__(name, *args, **kwargs)
@@ -213,7 +214,8 @@ class LottoProAI:
                     'any': any, 'all': all,
                     'isinstance': isinstance,
                     '__import__': safe_import,
-                    'print': print
+                    'print': print,
+                    'globals': lambda: safe_globals  # globals() 지원
                 },
                 'pd': pd,
                 'np': np,
@@ -325,7 +327,7 @@ class LottoProAI:
                 'algorithm': prediction_data['algorithm'],
                 'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
-                'round_predicted': prediction_data.get('round_predicted'),
+                'round_predicted': prediction_data.get('round_predicted', 1191),  # 업데이트된 회차
                 'is_checked': False,
                 'match_result': None,
                 'cached': prediction_data.get('cached', False)
@@ -427,6 +429,7 @@ def index():
     return render_template('index.html', 
                          algorithm_count=algorithm_count,
                          data_count=data_count,
+                         latest_round=1191,  # 업데이트된 회차
                          version="3.0")
 
 @app.route('/algorithms')
@@ -618,7 +621,7 @@ def get_lottery_data():
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
             'total_records': len(lotto_ai.lotto_df),
-            'latest_round': int(lotto_ai.lotto_df['round'].max()) if 'round' in lotto_ai.lotto_df.columns else 0
+            'latest_round': 1191  # 업데이트된 회차
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
@@ -640,6 +643,7 @@ def get_all_algorithm_info():
             'status': 'success',
             'info': unique_algorithms,
             'count': len(unique_algorithms),
+            'latest_round': 1191,  # 업데이트된 회차
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -669,6 +673,7 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
         'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
+        'latest_round': 1191,  # 업데이트된 회차
         'version': '3.0'
     })
 
@@ -681,7 +686,7 @@ def not_found(error):
             'status': 'error',
             'message': 'API endpoint not found'
         }), 404
-    return jsonify({'status': 'error', 'message': 'Page not found'}), 404
+    return render_template('404.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -691,7 +696,7 @@ def internal_error(error):
             'status': 'error',
             'message': 'Internal server error'
         }), 500
-    return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
+    return render_template('500.html'), 500
 
 # ===== CORS 설정 =====
 
@@ -713,5 +718,6 @@ if __name__ == '__main__':
     logger.info(f"Debug mode: {debug_mode}")
     logger.info(f"Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
     logger.info(f"Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
+    logger.info(f"Latest round: 1191")
     
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
