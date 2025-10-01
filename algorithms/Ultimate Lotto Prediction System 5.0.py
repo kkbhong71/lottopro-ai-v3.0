@@ -7,14 +7,22 @@ Ultimate Lotto Prediction System 5.0 - 웹앱 표준화 버전
 - 클러스터링분석, 웨이브분석, 보너스볼 연관성
 - 사이클분석, 미러링시스템 등 15가지 방법론
 - 웹앱 표준 predict_numbers() 인터페이스
+- 안전한 warnings 처리 적용
 """
 
 import pandas as pd
 import numpy as np
 import random
-import warnings
 from collections import Counter, defaultdict
 from datetime import datetime
+
+# 안전한 warnings 처리
+try:
+    import warnings
+    warnings.filterwarnings('ignore')
+except ImportError:
+    # warnings 모듈을 사용할 수 없는 환경
+    pass
 
 # 선택적 라이브러리 import
 try:
@@ -22,8 +30,6 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-
-warnings.filterwarnings('ignore')
 
 def predict_numbers():
     """
