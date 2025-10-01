@@ -1,5 +1,6 @@
 /**
  * LottoPro-AI v3.0 - 메인 JavaScript 모듈
+ * 개선된 버전 - 저장 기능 및 에러 처리 강화
  */
 
 class LottoProApp {
@@ -196,6 +197,87 @@ class LottoProApp {
         }
     }
     
+    // ===== 저장된 번호 관리 (개선) =====
+    saveNumbers(numbers, algorithmName = 'AI 예측') {
+        console.log('번호 저장 시도:', numbers, algorithmName);
+        
+        try {
+            // 번호 유효성 검사
+            const validation = this.validateLottoNumbers(numbers);
+            if (!validation.valid) {
+                this.showToast(validation.message, 'error');
+                return false;
+            }
+            
+            // 기존 저장된 번호 로드
+            const savedNumbers = this.getSavedNumbers();
+            
+            // 새 항목 생성
+            const newEntry = {
+                id: Date.now(),
+                numbers: Array.isArray(numbers) ? numbers : [],
+                timestamp: new Date().toISOString(),
+                algorithm: algorithmName,
+                checked: false,
+                matches: 0
+            };
+            
+            // 맨 앞에 추가
+            savedNumbers.unshift(newEntry);
+            
+            // 저장 (최대 100개까지만 유지)
+            const trimmedNumbers = savedNumbers.slice(0, 100);
+            localStorage.setItem('savedNumbers', JSON.stringify(trimmedNumbers));
+            
+            console.log('저장 완료. 총 개수:', trimmedNumbers.length);
+            
+            // 성공 메시지
+            this.showToast('번호가 저장되었습니다!', 'success');
+            
+            return true;
+            
+        } catch (error) {
+            console.error('저장 실패:', error);
+            this.showToast('번호 저장에 실패했습니다', 'error');
+            return false;
+        }
+    }
+    
+    getSavedNumbers() {
+        try {
+            const data = localStorage.getItem('savedNumbers');
+            return data ? JSON.parse(data) : [];
+        } catch (error) {
+            console.error('저장된 번호 로드 실패:', error);
+            return [];
+        }
+    }
+    
+    deleteSavedNumber(id) {
+        try {
+            const savedNumbers = this.getSavedNumbers();
+            const filtered = savedNumbers.filter(n => n.id !== id);
+            localStorage.setItem('savedNumbers', JSON.stringify(filtered));
+            this.showToast('번호가 삭제되었습니다', 'success');
+            return true;
+        } catch (error) {
+            console.error('삭제 실패:', error);
+            this.showToast('삭제에 실패했습니다', 'error');
+            return false;
+        }
+    }
+    
+    clearAllSavedNumbers() {
+        try {
+            localStorage.removeItem('savedNumbers');
+            this.showToast('모든 번호가 삭제되었습니다', 'success');
+            return true;
+        } catch (error) {
+            console.error('전체 삭제 실패:', error);
+            return false;
+        }
+    }
+    
     // ===== 데이터 관리 =====
     async loadUserData() {
         try {
@@ -326,6 +408,24 @@ class LottoProApp {
         }
     }
     
+    quickAlgorithmRun() {
+        // 첫 번째 알고리즘 실행 버튼 클릭
+        const firstBtn = document.querySelector('.run-algorithm-btn');
+        if (firstBtn) {
+            firstBtn.click();
+        } else {
+            this.showToast('실행 가능한 알고리즘이 없습니다', 'warning');
+        }
+    }
+    
+    addNewPrediction() {
+        window.location.href = '/algorithms';
+    }
+    
+    quickCompare() {
+        this.showToast('당첨번호를 입력해주세요', 'info');
+    }
+    
     scrollToSection(sectionId) {
         const section = document.getElementById(sectionId);
         if (section) {
@@ -362,7 +462,11 @@ class LottoProApp {
     }
     
     validateLottoNumbers(numbers) {
-        if (!Array.isArray(numbers) || numbers.length !== 6) {
+        if (!Array.isArray(numbers)) {
+            return { valid: false, message: '번호는 배열이어야 합니다' };
+        }
+        
+        if (numbers.length !== 6) {
             return { valid: false, message: '6개의 번호가 필요합니다' };
         }
         
@@ -445,6 +549,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showToast = (msg, type, duration) => lottoApp.showToast(msg, type, duration);
     window.showLoading = (msg) => lottoApp.showLoading(msg);
     window.hideLoading = () => lottoApp.hideLoading();
+    
+    // 저장 관련 함수 (algorithm.html에서 사용)
+    window.saveNumbers = (numbers, algorithmName) => lottoApp.saveNumbers(numbers, algorithmName);
+    window.getSavedNumbers = () => lottoApp.getSavedNumbers();
+    window.deleteSavedNumber = (id) => lottoApp.deleteSavedNumber(id);
     
     // PWA 설치 프롬프트
     setupPWAInstallPrompt();
