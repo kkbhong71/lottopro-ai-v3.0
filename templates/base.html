@@ -9,21 +9,21 @@
     <meta name="theme-color" content="#1a1a2e">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     
     <!-- 폰트 -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <!-- CSS -->
-    <link href="/static/css/style.css?v=3" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=3.1" rel="stylesheet">
     
     {% block extra_head %}{% endblock %}
 </head>
 <body class="antialiased">
     <!-- 배경 그라데이션 -->
     <div class="fixed inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 -z-10"></div>
-    <div class="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239C92AC" fill-opacity="0.1"%3E%3Ccircle cx="30" cy="30" r="1.5"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] -z-10"></div>
+    <div class="fixed inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%239C92AC\" fill-opacity=\"0.1\"%3E%3Ccircle cx=\"30\" cy=\"30\" r=\"1.5\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] -z-10"></div>
     
     <!-- 네비게이션 -->
     <nav class="backdrop-blur-md bg-white/5 border-b border-white/10 sticky top-0 z-50">
@@ -42,20 +42,28 @@
                     </div>
                 </div>
                 
-                <!-- 메뉴 -->
+                <!-- 데스크톱 메뉴 -->
                 <div class="hidden md:flex items-center space-x-4">
-                    <a href="/" class="nav-link"><i class="fas fa-home mr-2"></i>홈</a>
-                    <a href="/algorithms" class="nav-link"><i class="fas fa-brain mr-2"></i>알고리즘</a>
-                    <a href="/saved-numbers" class="nav-link"><i class="fas fa-save mr-2"></i>저장된 번호</a>
-                    <a href="/compare" class="nav-link"><i class="fas fa-chart-bar mr-2"></i>결과 비교</a>
+                    <a href="/" class="nav-link {% block nav_home %}{% endblock %}">
+                        <i class="fas fa-home mr-2"></i>홈
+                    </a>
+                    <a href="/algorithms" class="nav-link {% block nav_algorithms %}{% endblock %}">
+                        <i class="fas fa-brain mr-2"></i>알고리즘
+                    </a>
+                    <a href="/saved-numbers" class="nav-link {% block nav_saved %}{% endblock %}">
+                        <i class="fas fa-save mr-2"></i>저장된 번호
+                    </a>
+                    <a href="/compare" class="nav-link {% block nav_compare %}{% endblock %}">
+                        <i class="fas fa-chart-bar mr-2"></i>결과 비교
+                    </a>
                 </div>
                 
                 <!-- 다크모드 토글 & 모바일 메뉴 -->
                 <div class="flex items-center space-x-3">
-                    <button id="theme-toggle" class="icon-btn">
+                    <button id="theme-toggle" class="icon-btn" title="테마 변경">
                         <i class="fas fa-moon" id="theme-icon"></i>
                     </button>
-                    <button id="mobile-menu-btn" class="icon-btn md:hidden">
+                    <button id="mobile-menu-btn" class="icon-btn md:hidden" title="메뉴">
                         <i class="fas fa-bars"></i>
                     </button>
                 </div>
@@ -65,10 +73,18 @@
         <!-- 모바일 메뉴 -->
         <div id="mobile-menu" class="hidden md:hidden backdrop-blur-md bg-white/5 border-t border-white/10">
             <div class="px-4 py-3 space-y-2">
-                <a href="/" class="mobile-nav-link"><i class="fas fa-home mr-3"></i>홈</a>
-                <a href="/algorithms" class="mobile-nav-link"><i class="fas fa-brain mr-3"></i>알고리즘</a>
-                <a href="/saved-numbers" class="mobile-nav-link"><i class="fas fa-save mr-3"></i>저장된 번호</a>
-                <a href="/compare" class="mobile-nav-link"><i class="fas fa-chart-bar mr-3"></i>결과 비교</a>
+                <a href="/" class="mobile-nav-link">
+                    <i class="fas fa-home mr-3"></i>홈
+                </a>
+                <a href="/algorithms" class="mobile-nav-link">
+                    <i class="fas fa-brain mr-3"></i>알고리즘
+                </a>
+                <a href="/saved-numbers" class="mobile-nav-link">
+                    <i class="fas fa-save mr-3"></i>저장된 번호
+                </a>
+                <a href="/compare" class="mobile-nav-link">
+                    <i class="fas fa-chart-bar mr-3"></i>결과 비교
+                </a>
             </div>
         </div>
     </nav>
@@ -105,7 +121,7 @@
     
     <!-- 플로팅 액션 버튼 -->
     <div class="fixed bottom-6 right-6 z-40">
-        <button id="floating-btn" class="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 flex items-center justify-center">
+        <button id="floating-btn" class="w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-xl hover:shadow-2xl transform hover:scale-110 transition-all duration-300 flex items-center justify-center" title="빠른 예측">
             <i class="fas fa-dice text-white text-xl"></i>
         </button>
     </div>
@@ -118,12 +134,24 @@
         </div>
     </div>
     
-    <!-- 토스트 알림 -->
+    <!-- 토스트 알림 컨테이너 -->
     <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-3"></div>
     
-    <!-- JavaScript - 캐시 무효화를 위한 버전 파라미터 추가 -->
-    <script src="/static/js/main.js?v=3"></script>
-    <script src="/static/js/github-api.js?v=3"></script>
+    <!-- JavaScript - 올바른 순서로 로드 -->
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=3.1"></script>
+    <script src="{{ url_for('static', filename='js/github-api.js') }}?v=3.1"></script>
+    <script src="{{ url_for('static', filename='js/prediction.js') }}?v=3.1"></script>
+    
+    <!-- 페이지별 추가 스크립트 -->
     {% block extra_js %}{% endblock %}
+    
+    <!-- 초기화 스크립트 -->
+    <script>
+    // 전역 초기화 확인
+    console.log('📦 Base HTML 로드 완료');
+    console.log('🔧 Main.js:', typeof lottoApp !== 'undefined' ? '✅' : '❌');
+    console.log('🔧 GitHub API:', typeof githubAPIManager !== 'undefined' ? '✅' : '❌');
+    console.log('🔧 Prediction:', typeof predictionManager !== 'undefined' ? '✅' : '❌');
+    </script>
 </body>
 </html>
