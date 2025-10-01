@@ -13,9 +13,14 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 import random
-import warnings
 
-warnings.filterwarnings('ignore')
+# 안전한 warnings 처리
+try:
+    import warnings
+    warnings.filterwarnings('ignore')
+except ImportError:
+    # warnings 모듈을 사용할 수 없는 환경
+    pass
 
 def predict_numbers():
     """
