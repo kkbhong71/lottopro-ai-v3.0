@@ -1,17 +1,17 @@
 {
   "version": "3.0",
   "description": "LottoPro-AI v3.0 알고리즘 정보 - 8개 고성능 예측 알고리즘",
-  "last_updated": "2025-09-26",
+  "last_updated": "2025-10-02",
   "algorithms": {
-    "super_feature_engineering": {
-      "id": "super_feature_engineering",
-      "name": "Super Feature Engineering",
+    "super_v1": {
+      "id": "super_v1",
+      "name": "Super ver 1.0",
       "subtitle": "Feature Engineering Focused",
       "description": "특성 엔지니어링에 집중한 고급 분석 알고리즘 - 데이터의 숨겨진 패턴 발굴",
       "version": "1.0",
-      "github_path": "algorithms/Super ver 1.0 - Feature Engineering Focused.py",
+      "github_path": "algorithms/super_v1.py",
       "category": "feature_engineering",
-      "accuracy": "87.3%",
+      "accuracy": "87.3",
       "accuracy_rate": 87.3,
       "execution_time": "~2초",
       "complexity": "Advanced",
@@ -25,15 +25,15 @@
       "icon": "🔧",
       "difficulty": "advanced"
     },
-    "strongest_universe": {
-      "id": "strongest_universe",
-      "name": "The Strongest in Universe",
+    "strongest_v3": {
+      "id": "strongest_v3",
+      "name": "The Strongest in Universe v3.0",
       "subtitle": "Maximum Power Algorithm",
       "description": "우주 최강의 분석 알고리즘 - 복합적 패턴 분석과 확률론적 접근",
       "version": "3.0",
-      "github_path": "algorithms/The Strongest in the Universe ver 3.0.py",
+      "github_path": "algorithms/strongest_v3.py",
       "category": "comprehensive",
-      "accuracy": "91.5%",
+      "accuracy": "91.5",
       "accuracy_rate": 91.5,
       "execution_time": "~3초",
       "complexity": "Expert",
@@ -47,15 +47,15 @@
       "icon": "🌟",
       "difficulty": "expert"
     },
-    "ultimate_system_1": {
-      "id": "ultimate_system_1",
+    "ultimate_v1": {
+      "id": "ultimate_v1",
       "name": "Ultimate Prediction 1.0",
       "subtitle": "Frequency Analysis",
       "description": "빈도 분석 기반 예측 시스템 - 출현 빈도와 주기성 분석",
       "version": "1.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 1.0.py",
+      "github_path": "algorithms/ultimate_v1.py",
       "category": "frequency_analysis",
-      "accuracy": "75.2%",
+      "accuracy": "75.2",
       "accuracy_rate": 75.2,
       "execution_time": "~1초",
       "complexity": "Beginner",
@@ -69,15 +69,15 @@
       "icon": "📊",
       "difficulty": "beginner"
     },
-    "ultimate_system_2": {
-      "id": "ultimate_system_2",
+    "ultimate_v2": {
+      "id": "ultimate_v2",
       "name": "Ultimate Prediction 2.0",
       "subtitle": "Pattern Recognition",
       "description": "패턴 인식 알고리즘 - 숨겨진 패턴과 연관성 발견",
       "version": "2.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 2.0.py",
+      "github_path": "algorithms/ultimate_v2.py",
       "category": "pattern_recognition",
-      "accuracy": "78.8%",
+      "accuracy": "78.8",
       "accuracy_rate": 78.8,
       "execution_time": "~2초",
       "complexity": "Intermediate",
@@ -91,15 +91,15 @@
       "icon": "🔍",
       "difficulty": "intermediate"
     },
-    "ultimate_system_3": {
-      "id": "ultimate_system_3",
+    "ultimate_v3": {
+      "id": "ultimate_v3",
       "name": "Ultimate Prediction 3.0",
       "subtitle": "Machine Learning Based",
       "description": "머신러닝 기반 예측 - AI 학습을 통한 지능형 번호 생성",
       "version": "3.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 3.0.py",
+      "github_path": "algorithms/ultimate_v3.py",
       "category": "machine_learning",
-      "accuracy": "82.1%",
+      "accuracy": "82.1",
       "accuracy_rate": 82.1,
       "execution_time": "~3초",
       "complexity": "Advanced",
@@ -113,15 +113,15 @@
       "icon": "🤖",
       "difficulty": "advanced"
     },
-    "ultimate_system_4": {
-      "id": "ultimate_system_4",
+    "ultimate_v4": {
+      "id": "ultimate_v4",
       "name": "Ultimate Prediction 4.0",
       "subtitle": "Hot/Cold Analysis",
       "description": "핫/콜드 번호 분석 - 뜨거운 번호와 차가운 번호 구분 분석",
       "version": "4.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 4.0.py",
+      "github_path": "algorithms/ultimate_v4.py",
       "category": "hot_cold_analysis",
-      "accuracy": "73.6%",
+      "accuracy": "73.6",
       "accuracy_rate": 73.6,
       "execution_time": "~1초",
       "complexity": "Intermediate",
@@ -135,15 +135,15 @@
       "icon": "🔥",
       "difficulty": "intermediate"
     },
-    "ultimate_system_5": {
-      "id": "ultimate_system_5",
+    "ultimate_v5": {
+      "id": "ultimate_v5",
       "name": "Ultimate Prediction 5.0",
       "subtitle": "Consecutive Pattern",
       "description": "연속 번호 패턴 분석 - 연속성과 간격 패턴 분석",
       "version": "5.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 5.0.py",
+      "github_path": "algorithms/ultimate_v5.py",
       "category": "consecutive_analysis",
-      "accuracy": "76.9%",
+      "accuracy": "76.9",
       "accuracy_rate": 76.9,
       "execution_time": "~2초",
       "complexity": "Intermediate",
@@ -157,15 +157,15 @@
       "icon": "📈",
       "difficulty": "intermediate"
     },
-    "ultimate_system_6": {
-      "id": "ultimate_system_6",
+    "ultimate_v6": {
+      "id": "ultimate_v6",
       "name": "Ultimate Prediction 6.0",
       "subtitle": "Sum Range Analysis",
       "description": "합계 범위 분석 - 번호 합계의 최적 범위 분석 및 예측",
       "version": "6.0",
-      "github_path": "algorithms/Ultimate Lotto Prediction System 6.0.py",
+      "github_path": "algorithms/ultimate_v6.py",
       "category": "sum_range_analysis",
-      "accuracy": "79.4%",
+      "accuracy": "79.4",
       "accuracy_rate": 79.4,
       "execution_time": "~2초",
       "complexity": "Beginner",
