@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}AI 알고리즘{% endblock %}
+{% block title %}AI 알고리즘 - LottoPro-AI{% endblock %}
+{% block nav_algorithms %}active{% endblock %}
 
 {% block content %}
 <div class="algorithms-container">
@@ -9,7 +10,7 @@
         <p class="subtitle">각기 다른 방식으로 분석하는 8가지 독자적 AI 모델로<br>최고의 로또 예측 정확도를 경험해보세요</p>
     </div>
 
-    <!-- 🔧 수정: 정렬 및 필터 컨트롤 -->
+    <!-- 필터 컨트롤 -->
     <div class="filter-controls">
         <div class="control-group">
             <label for="sort-select">
@@ -17,8 +18,8 @@
                 정렬:
             </label>
             <select id="sort-select" class="control-select">
-                <option value="name">이름순</option>
                 <option value="accuracy" selected>정확도순</option>
+                <option value="name">이름순</option>
             </select>
         </div>
 
@@ -43,492 +44,93 @@
         </div>
     </div>
 
-    <!-- 알고리즘 카드 그리드 -->
+    <!-- 알고리즘 그리드 -->
     <div id="algorithm-grid" class="algorithm-grid">
-        <!-- 카드들이 여기에 동적으로 렌더링됩니다 -->
         <div class="loading-spinner">
             <div class="spinner"></div>
             <p>알고리즘 로딩 중...</p>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- 🔧 신규: CSS 스타일 추가 -->
-<style>
-.algorithms-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-.algorithms-header {
-    text-align: center;
-    margin-bottom: 3rem;
-}
-
-.algorithms-header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.subtitle {
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-    line-height: 1.6;
-}
-
-/* 필터 컨트롤 스타일 */
-.filter-controls {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 1rem;
-    backdrop-filter: blur(10px);
-    flex-wrap: wrap;
-}
-
-.control-group {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.control-group label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.control-icon {
-    font-size: 1.2rem;
-}
-
-.control-select {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.control-select:hover {
-    border-color: var(--primary);
-    background: rgba(102, 126, 234, 0.1);
-}
-
-.control-select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-}
-
-.control-button {
-    padding: 0.5rem 1.5rem;
-    border-radius: 0.5rem;
-    border: none;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.control-button:hover {
-    transform: translateY(-2px);
-}
-
-/* 알고리즘 그리드 */
-.algorithm-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
-    margin-top: 2rem;
-}
-
-/* 알고리즘 카드 */
-.algorithm-card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 1rem;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.algorithm-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
-    transform: scaleX(0);
-    transition: transform 0.3s ease;
-}
-
-.algorithm-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-    border-color: rgba(102, 126, 234, 0.5);
-}
-
-.algorithm-card:hover::before {
-    transform: scaleX(1);
-}
-
-.algorithm-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.algorithm-header h3 {
-    font-size: 1.3rem;
-    color: var(--text-primary);
-}
-
-.accuracy-badge {
-    padding: 0.3rem 0.8rem;
-    border-radius: 0.5rem;
-    font-weight: bold;
-    font-size: 0.9rem;
-}
-
-.accuracy-badge.high {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
-}
-
-.accuracy-badge.medium {
-    background: rgba(251, 191, 36, 0.2);
-    color: #fbbf24;
-}
-
-.accuracy-badge.low {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-}
-
-.algorithm-description {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-    min-height: 3rem;
-}
-
-.algorithm-stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.stat {
-    text-align: center;
-    padding: 0.8rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 0.5rem;
-}
-
-.stat-label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.3rem;
-}
-
-.stat-value {
-    display: block;
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: var(--primary);
-}
-
-.run-algorithm-btn {
-    width: 100%;
-    padding: 1rem;
-    border: none;
-    border-radius: 0.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.run-algorithm-btn:hover {
-    transform: scale(1.02);
-    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.run-algorithm-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* 로딩 스피너 */
-.loading-spinner {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 3rem;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* 예측 결과 모달 */
-.prediction-result-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(5px);
-}
-
-.modal-content {
-    background: var(--bg-secondary);
-    border-radius: 1.5rem;
-    padding: 2rem;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    animation: modalSlideUp 0.3s ease;
-}
-
-@keyframes modalSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-}
-
-.modal-header h2 {
-    font-size: 1.8rem;
-    margin: 0;
-}
-
-.close-modal {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: color 0.3s ease;
-}
-
-.close-modal:hover {
-    color: var(--text-primary);
-}
-
-.predicted-numbers {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin: 2rem 0;
-    flex-wrap: wrap;
-}
-
-.lotto-number {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.result-info {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin: 1.5rem 0;
-}
-
-.result-info p {
-    margin: 0.5rem 0;
-    color: var(--text-secondary);
-}
-
-.modal-footer {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-}
-
-.save-numbers-btn,
-.close-btn {
-    flex: 1;
-    padding: 0.8rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.save-numbers-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.close-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-}
-
-.save-numbers-btn:hover,
-.close-btn:hover {
-    transform: translateY(-2px);
-}
-
-@media (max-width: 768px) {
-    .algorithm-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .filter-controls {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .control-group {
-        width: 100%;
-        justify-content: space-between;
-    }
-}
-</style>
-
-<!-- 🔧 신규: JavaScript로 정렬/필터 기능 연결 -->
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🧠 알고리즘 페이지 초기화 완료');
+    console.log('🧠 알고리즘 페이지 초기화');
 
-    // 정렬 선택 이벤트
+    // 정렬 이벤트
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {
             const sortBy = this.value;
             const filterBy = document.getElementById('filter-select')?.value || 'all';
-            
             console.log('정렬 변경:', sortBy);
-            
             if (window.githubAPIManager) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
             }
         });
     }
 
-    // 필터 선택 이벤트
+    // 필터 이벤트
     const filterSelect = document.getElementById('filter-select');
     if (filterSelect) {
         filterSelect.addEventListener('change', function() {
             const filterBy = this.value;
-            const sortBy = document.getElementById('sort-select')?.value || 'name';
-            
+            const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
             console.log('필터 변경:', filterBy);
-            
             if (window.githubAPIManager) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
             }
         });
     }
 
-    // 새로고침 버튼 이벤트
+    // 새로고침 버튼
     const refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async function() {
             console.log('새로고침 시작');
-            
             this.disabled = true;
             this.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">로딩 중...</span>';
             
             if (window.githubAPIManager) {
                 await window.githubAPIManager.loadAlgorithmInfo();
-                
-                const sortBy = document.getElementById('sort-select')?.value || 'name';
+                const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
                 const filterBy = document.getElementById('filter-select')?.value || 'all';
-                
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
             }
             
             this.disabled = false;
             this.innerHTML = '<span class="btn-icon">🔄</span><span class="btn-text">새로고침</span>';
-            
-            console.log('새로고침 완료');
         });
     }
 });
 
-// 번호 저장 함수 (전역)
+// 번호 저장 함수
 function saveNumbers(numbers) {
     console.log('번호 저장:', numbers);
     
-    // localStorage에 저장
-    const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
-    savedNumbers.push({
-        numbers: numbers,
-        timestamp: new Date().toISOString(),
-        algorithm: 'AI 예측'
-    });
-    localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
-    
-    alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
+    try {
+        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+        const newEntry = {
+            id: Date.now(),
+            numbers: numbers,
+            timestamp: new Date().toISOString(),
+            algorithm: 'AI 예측',
+            checked: false
+        };
+        
+        savedNumbers.unshift(newEntry); // 맨 앞에 추가
+        localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
+        
+        alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
+        
+        // 저장된 개수 표시
+        console.log('총 저장된 번호:', savedNumbers.length);
+    } catch (error) {
+        console.error('저장 실패:', error);
+        alert('번호 저장에 실패했습니다.');
+    }
 }
 </script>
-
 {% endblock %}
