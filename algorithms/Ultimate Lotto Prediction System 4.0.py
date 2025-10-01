@@ -7,15 +7,23 @@ Ultimate Lotto Prediction System 4.0 - 웹앱 표준화 버전
 - Prophet 시계열 모델, 베이지안 최적화
 - 65+ 방법론 통합 앙상블 시스템
 - 웹앱 표준 predict_numbers() 인터페이스
+- 안전한 warnings 처리 적용
 """
 
 import pandas as pd
 import numpy as np
 import random
-import warnings
 from collections import Counter, defaultdict
 from datetime import datetime
 import math
+
+# 안전한 warnings 처리
+try:
+    import warnings
+    warnings.filterwarnings('ignore')
+except ImportError:
+    # warnings 모듈을 사용할 수 없는 환경
+    pass
 
 # 선택적 라이브러리 import
 try:
@@ -23,8 +31,6 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-
-warnings.filterwarnings('ignore')
 
 def predict_numbers():
     """
@@ -481,11 +487,9 @@ def analyze_network_centrality(df):
     """네트워크 중심성 분석"""
     try:
         if 'network_centrality' in df.columns:
-            # 높은 중심성을 가진 패턴 분석
             high_centrality_threshold = df['network_centrality'].quantile(0.75)
             high_centrality_rows = df[df['network_centrality'] >= high_centrality_threshold]
             
-            # 중심성이 높은 번호들 추출
             high_centrality_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_centrality_rows.iterrows():
@@ -508,11 +512,9 @@ def analyze_reinforcement_learning(df):
     """강화학습 분석"""
     try:
         if 'q_learning_value' in df.columns:
-            # 높은 Q값을 가진 패턴 분석
             high_q_threshold = df['q_learning_value'].quantile(0.75)
             high_q_rows = df[df['q_learning_value'] >= high_q_threshold]
             
-            # Q값이 높은 번호들 추출
             high_q_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_q_rows.iterrows():
@@ -538,13 +540,12 @@ def analyze_prophet_forecasting(df):
             current_trend = df['prophet_trend'].tail(5).mean()
             current_seasonal = df['prophet_seasonal'].tail(5).mean()
             
-            # 트렌드 기반 번호 예측
             if current_trend > 0.1:
-                predicted_numbers = list(range(25, 45))  # 상승 트렌드 시 높은 번호
+                predicted_numbers = list(range(25, 45))
             elif current_trend < -0.1:
-                predicted_numbers = list(range(1, 21))   # 하락 트렌드 시 낮은 번호
+                predicted_numbers = list(range(1, 21))
             else:
-                predicted_numbers = list(range(12, 34))  # 안정 트렌드 시 중간 번호
+                predicted_numbers = list(range(12, 34))
             
             return {
                 'predicted_numbers': predicted_numbers[:15],
@@ -561,11 +562,9 @@ def analyze_bayesian_optimization(df):
     """베이지안 최적화 분석"""
     try:
         if 'bayesian_score' in df.columns:
-            # 베이지안 점수가 높은 패턴 분석
             high_bayes_threshold = df['bayesian_score'].quantile(0.75)
             high_bayes_rows = df[df['bayesian_score'] >= high_bayes_threshold]
             
-            # 베이지안 점수가 높은 번호들
             high_bayes_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_bayes_rows.iterrows():
@@ -614,44 +613,36 @@ def analyze_advanced_patterns(df):
 def create_ultimate_ensemble(analysis_results, df):
     """65+ 방법론 궁극 앙상블"""
     try:
-        # 모든 분석 결과를 종합하여 번호별 점수 계산
         number_scores = defaultdict(float)
         
-        # 기본 점수
         for num in range(1, 46):
             number_scores[num] = 100
         
-        # 빈도 분석 점수
         freq_result = analysis_results.get('frequency', {})
         hot_numbers = freq_result.get('hot_numbers', [])
         for num in hot_numbers[:15]:
             number_scores[num] += 150
         
-        # 네트워크 중심성 점수
         network_result = analysis_results.get('network_centrality', {})
         central_numbers = network_result.get('high_centrality_numbers', [])
         for num in central_numbers[:15]:
             number_scores[num] += 180
         
-        # 강화학습 점수
         rl_result = analysis_results.get('reinforcement_learning', {})
         q_numbers = rl_result.get('high_q_numbers', [])
         for num in q_numbers[:15]:
             number_scores[num] += 170
         
-        # Prophet 예측 점수
         prophet_result = analysis_results.get('prophet', {})
         predicted_numbers = prophet_result.get('predicted_numbers', [])
         for num in predicted_numbers[:15]:
             number_scores[num] += 160
         
-        # 베이지안 최적화 점수
         bayes_result = analysis_results.get('bayesian_optimization', {})
         optimal_numbers = bayes_result.get('optimal_numbers', [])
         for num in optimal_numbers[:15]:
             number_scores[num] += 150
         
-        # 정규화
         if number_scores:
             max_score = max(number_scores.values())
             min_score = min(number_scores.values())
@@ -669,7 +660,6 @@ def create_ultimate_ensemble(analysis_results, df):
         
     except Exception as e:
         print(f"앙상블 생성 오류: {e}")
-        # 기본 앙상블 반환
         return {
             'final_scores': {i: 100 + random.randint(-20, 20) for i in range(1, 46)},
             'methodology_count': 65,
@@ -688,14 +678,11 @@ def generate_ultimate_combination(analysis_results, df):
         if not final_scores:
             return generate_smart_random()
         
-        # 각 분석 결과에서 후보 번호 수집
         candidates = set()
         
-        # 상위 점수 번호들
         sorted_scores = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
         candidates.update([num for num, score in sorted_scores[:25]])
         
-        # 각 방법론별 추천 번호들
         freq_result = analysis_results.get('frequency', {})
         candidates.update(freq_result.get('hot_numbers', [])[:10])
         
@@ -705,13 +692,11 @@ def generate_ultimate_combination(analysis_results, df):
         rl_result = analysis_results.get('reinforcement_learning', {})
         candidates.update(rl_result.get('high_q_numbers', [])[:10])
         
-        # 후보가 부족하면 보충
         if len(candidates) < 15:
             candidates.update(range(1, 21))
         
         candidates = list(candidates)
         
-        # 최적 조합 탐색
         best_combination = None
         best_score = 0
         
@@ -733,15 +718,12 @@ def generate_ultimate_combination(analysis_results, df):
 def select_ultimate_balanced_numbers(candidates, analysis_results):
     """균형잡힌 번호 선택 - 65+ 방법론 적용"""
     try:
-        # 패턴 분석 결과 반영
         pattern_result = analysis_results.get('pattern', {})
         target_odd = pattern_result.get('optimal_odd_count', 3)
         
-        # 통계 분석 결과 반영
         stat_result = analysis_results.get('statistics', {})
         target_sum_range = stat_result.get('optimal_sum_range', (120, 160))
         
-        # 고급 패턴 결과 반영
         advanced_result = analysis_results.get('advanced_patterns', {})
         target_consecutive = advanced_result.get('optimal_consecutive', 1)
         
@@ -749,7 +731,6 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
         for _ in range(attempts):
             selected = random.sample(candidates, min(6, len(candidates)))
             
-            # 부족하면 전체 범위에서 보충
             while len(selected) < 6:
                 num = random.randint(1, 45)
                 if num not in selected:
@@ -757,16 +738,13 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
             
             selected = selected[:6]
             
-            # 다중 조건 검사
             odd_count = sum(1 for num in selected if num % 2 == 1)
             total_sum = sum(selected)
             
-            # 연속번호 개수
             sorted_selected = sorted(selected)
             consecutive_count = sum(1 for i in range(len(sorted_selected)-1) 
                                   if sorted_selected[i+1] - sorted_selected[i] == 1)
             
-            # 모든 조건 체크
             conditions_met = 0
             if abs(odd_count - target_odd) <= 1:
                 conditions_met += 1
@@ -775,11 +753,9 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
             if abs(consecutive_count - target_consecutive) <= 1:
                 conditions_met += 1
             
-            # 조건 만족도가 높으면 선택
             if conditions_met >= 2:
                 return selected
         
-        # 조건에 맞지 않으면 기본 선택
         return random.sample(candidates, min(6, len(candidates)))
         
     except:
@@ -790,29 +766,24 @@ def evaluate_ultimate_quality(selected, analysis_results, final_scores):
     try:
         score = 0
         
-        # 앙상블 점수 (50%)
         ensemble_score = sum(final_scores.get(num, 0) for num in selected) * 0.05
         score += ensemble_score
         
-        # 네트워크 중심성 점수 (20%)
         network_result = analysis_results.get('network_centrality', {})
         central_numbers = set(network_result.get('high_centrality_numbers', []))
         centrality_matches = len(set(selected) & central_numbers)
         score += centrality_matches * 30
         
-        # 강화학습 점수 (15%)
         rl_result = analysis_results.get('reinforcement_learning', {})
         q_numbers = set(rl_result.get('high_q_numbers', []))
         q_matches = len(set(selected) & q_numbers)
         score += q_matches * 25
         
-        # Prophet 예측 점수 (10%)
         prophet_result = analysis_results.get('prophet', {})
         predicted_numbers = set(prophet_result.get('predicted_numbers', []))
         prophet_matches = len(set(selected) & predicted_numbers)
         score += prophet_matches * 20
         
-        # 베이지안 최적화 점수 (5%)
         bayes_result = analysis_results.get('bayesian_optimization', {})
         optimal_numbers = set(bayes_result.get('optimal_numbers', []))
         bayes_matches = len(set(selected) & optimal_numbers)
@@ -826,17 +797,15 @@ def evaluate_ultimate_quality(selected, analysis_results, final_scores):
 def generate_smart_random():
     """지능형 랜덤 생성"""
     try:
-        # 구간별 균형 선택
         zones = [range(1, 10), range(10, 19), range(19, 28), range(28, 37), range(37, 46)]
         selected = []
         
         for zone in zones:
-            if len(selected) < 6 and random.random() > 0.15:  # 85% 확률로 각 구간에서 선택
+            if len(selected) < 6 and random.random() > 0.15:
                 num = random.choice(zone)
                 if num not in selected:
                     selected.append(num)
         
-        # 부족하면 전체에서 추가
         while len(selected) < 6:
             num = random.randint(1, 45)
             if num not in selected:
@@ -863,7 +832,6 @@ def validate_result(result):
         if len(result) != 6:
             return generate_safe_fallback()
         
-        # 정수 변환 및 범위 확인
         valid_numbers = []
         for num in result:
             if isinstance(num, (int, float, np.number)):
@@ -884,7 +852,6 @@ if __name__ == "__main__":
     print("Ultimate Lotto Prediction System 4.0 - 웹앱 호환 테스트")
     print("65+ 방법론 통합 차세대 AI 시스템")
     
-    # 테스트용 더미 데이터
     test_data = []
     for i in range(150):
         numbers = sorted(random.sample(range(1, 46), 6))
@@ -896,10 +863,8 @@ if __name__ == "__main__":
             'bonus_num': random.randint(1, 45)
         })
     
-    # 글로벌 변수 시뮬레이션
     lotto_data = pd.DataFrame(test_data)
     
-    # 테스트 실행
     result = predict_numbers()
     print(f"예측 결과: {result}")
     print(f"결과 검증: {isinstance(result, list) and len(result) == 6 and all(1 <= n <= 45 for n in result)}")
