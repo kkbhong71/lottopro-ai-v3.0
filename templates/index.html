@@ -101,13 +101,13 @@
         
         <!-- 통계 카드 그리드 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- 분석된 회차 수 -->
+            <!-- 분석된 회차 수 (1,191로 업데이트) -->
             <div class="stat-card">
                 <div class="stat-icon bg-blue-500">
                     <i class="fas fa-database"></i>
                 </div>
                 <div class="stat-content">
-                    <div class="stat-number" id="analyzed-rounds">1,190</div>
+                    <div class="stat-number" id="analyzed-rounds">1,191</div>
                     <div class="stat-label">분석된 회차</div>
                 </div>
                 <div class="stat-trend">
@@ -165,7 +165,7 @@
 </section>
 
 <!-- 빠른 예측 섹션 -->
-<section class="py-20 relative">
+<section class="py-20 relative" id="quick-prediction-section">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="glass-card p-8 md:p-12">
             <div class="text-center mb-8">
@@ -220,6 +220,11 @@
                     </h4>
                     <div class="prediction-numbers mb-6" id="recommended-numbers">
                         <!-- 번호가 동적으로 표시됩니다 -->
+                    </div>
+                    
+                    <!-- 알고리즘 정보 -->
+                    <div id="algorithm-info" class="mb-6 text-center text-sm text-purple-300">
+                        <!-- 알고리즘 정보가 표시됩니다 -->
                     </div>
                     
                     <div class="flex justify-center space-x-4">
@@ -311,12 +316,26 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="/static/js/github-api.js"></script>
 <script src="/static/js/prediction.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    loadAlgorithmPreview();
-    updateStats();
-    initQuickPrediction();
+    // 알고리즘 미리보기 로드
+    if (window.loadAlgorithmPreview) {
+        loadAlgorithmPreview();
+    }
+    
+    // 통계 업데이트
+    if (window.updateStats) {
+        updateStats();
+    }
+    
+    // 빠른 예측 초기화
+    if (window.initQuickPrediction) {
+        initQuickPrediction();
+    }
+    
+    console.log('🏠 홈페이지 초기화 완료');
 });
 </script>
 {% endblock %}
