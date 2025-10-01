@@ -13,10 +13,14 @@ import pandas as pd
 import numpy as np
 import random
 from collections import Counter, defaultdict
-import warnings
 import math
 
-warnings.filterwarnings('ignore')
+# 안전한 warnings 처리
+try:
+    import warnings
+    warnings.filterwarnings('ignore')
+except ImportError:
+    pass
 
 def predict_numbers():
     """
