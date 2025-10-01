@@ -44,7 +44,7 @@ class GitHubAPIManager {
         }
     }
 
-    // 🔧 수정: 중복 제거 및 정렬 로직 개선
+    // 중복 제거 및 정렬 로직 개선
     renderAlgorithmCards(containerId = 'algorithm-grid', sortBy = 'name', filterAccuracy = 'all') {
         const container = document.getElementById(containerId);
         if (!container) {
@@ -92,13 +92,13 @@ class GitHubAPIManager {
             container.appendChild(card);
         });
 
-        // 🔧 중요: 렌더링 후 이벤트 리스너 재바인딩
+        // 렌더링 후 이벤트 리스너 재바인딩
         this.bindCardEvents();
 
         console.log(`${filteredAlgorithms.length}개 카드 렌더링 완료`);
     }
 
-    // 🔧 수정: 알고리즘 카드 생성
+    // 알고리즘 카드 생성
     createAlgorithmCard(algo) {
         const card = document.createElement('div');
         card.className = 'algorithm-card';
@@ -134,7 +134,7 @@ class GitHubAPIManager {
         return card;
     }
 
-    // 🔧 신규: 카드 이벤트 바인딩 함수
+    // 카드 이벤트 바인딩 함수
     bindCardEvents() {
         const buttons = document.querySelectorAll('.run-algorithm-btn');
         console.log(`${buttons.length}개 버튼에 이벤트 바인딩 시작`);
@@ -159,7 +159,7 @@ class GitHubAPIManager {
         console.log('이벤트 바인딩 완료');
     }
 
-    // 🔧 신규: 알고리즘 실행 함수
+    // 알고리즘 실행 함수 (에러 처리 강화)
     async runAlgorithm(algorithmKey) {
         try {
             const button = document.querySelector(`button[data-algorithm="${algorithmKey}"]`);
@@ -184,12 +184,24 @@ class GitHubAPIManager {
                 })
             });
 
+            // 에러 응답 처리 개선
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status} 에러`);
             }
 
             const result = await response.json();
             console.log('예측 결과:', result);
+
+            // 에러 상태 체크
+            if (result.status === 'error') {
+                throw new Error(result.message || '알고리즘 실행 실패');
+            }
+
+            // 빈 결과 체크
+            if (!result.numbers || result.numbers.length === 0) {
+                throw new Error('예측 번호가 생성되지 않았습니다. 잠시 후 다시 시도해주세요.');
+            }
 
             // 결과 표시
             this.displayPredictionResult(result);
@@ -205,7 +217,14 @@ class GitHubAPIManager {
 
         } catch (error) {
             console.error('알고리즘 실행 실패:', error);
-            alert(`알고리즘 실행에 실패했습니다: ${error.message}`);
+            
+            // 사용자 친화적 에러 메시지
+            let errorMessage = error.message;
+            if (errorMessage.includes('warnings')) {
+                errorMessage = '서버 설정 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+            }
+            
+            alert(`알고리즘 실행 실패\n\n${errorMessage}`);
             
             // 버튼 복원
             const button = document.querySelector(`button[data-algorithm="${algorithmKey}"]`);
@@ -219,13 +238,11 @@ class GitHubAPIManager {
         }
     }
 
-    // 🔧 신규: 예측 결과 표시 함수
+    // 예측 결과 표시 함수 (개선)
     displayPredictionResult(result) {
-        // 결과를 표시할 모달이나 섹션 찾기
         let resultContainer = document.getElementById('prediction-result');
         
         if (!resultContainer) {
-            // 결과 컨테이너가 없으면 생성
             resultContainer = document.createElement('div');
             resultContainer.id = 'prediction-result';
             resultContainer.className = 'prediction-result-modal';
@@ -236,6 +253,11 @@ class GitHubAPIManager {
         const numbersHtml = numbers.map(num => 
             `<span class="lotto-number">${num}</span>`
         ).join('');
+        
+        // 알고리즘 이름 표시 개선
+        const algorithmInfo = this.algorithms[result.algorithm] || {};
+        const algorithmName = result.algorithm_name || algorithmInfo.name || result.algorithm;
+        const accuracy = result.accuracy_rate || algorithmInfo.accuracy || 'N/A';
 
         resultContainer.innerHTML = `
             <div class="modal-content">
@@ -248,12 +270,14 @@ class GitHubAPIManager {
                         ${numbersHtml}
                     </div>
                     <div class="result-info">
-                        <p><strong>알고리즘:</strong> ${result.algorithm || 'Unknown'}</p>
+                        <p><strong>알고리즘:</strong> ${algorithmName}</p>
+                        <p><strong>예측 정확도:</strong> ${accuracy}%</p>
                         <p><strong>예측 시간:</strong> ${new Date().toLocaleString('ko-KR')}</p>
+                        ${result.cached ? '<p class="cache-info">⚡ 캐시된 결과 (1시간 이내)</p>' : ''}
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="save-numbers-btn" onclick="saveNumbers(${JSON.stringify(numbers)})">
+                    <button class="save-numbers-btn" onclick="window.saveNumbers && window.saveNumbers(${JSON.stringify(numbers)}, '${result.algorithm}')">
                         💾 번호 저장하기
                     </button>
                     <button class="close-btn" onclick="this.closest('.prediction-result-modal').remove()">
