@@ -80,12 +80,9 @@ class LottoProAI:
             with open(self.algorithm_info_path, 'r', encoding='utf-8') as f:
                 self.algorithm_info = json.load(f)
             
-            # ✅ 수정: 프론트엔드가 기대하는 형식으로 변환
             if 'algorithms' in self.algorithm_info:
-                # 이미 올바른 형식
                 logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
             else:
-                # 기존 형식을 새 형식으로 변환
                 logger.warning("Converting old algorithm info format to new format")
                 algorithms_dict = {}
                 for key, value in self.algorithm_info.items():
@@ -112,10 +109,9 @@ class LottoProAI:
     def load_lotto_data(self):
         """로또 당첨번호 데이터 로드"""
         try:
-            # 먼저 data 폴더에서 찾기
+            # 최신 회차 파일로 변경
             csv_path = self.data_path / 'new_1191.csv'
             if not csv_path.exists():
-                # 루트 폴더에서 찾기
                 csv_path = Path('new_1191.csv')
             
             self.lotto_df = pd.read_csv(csv_path)
@@ -189,21 +185,21 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
-            # ✅ 수정: 제한된 import 함수 정의
+            # 제한된 import 함수 정의 (핵심 수정!)
             def safe_import(name, *args, **kwargs):
                 """보안을 위해 제한된 모듈만 import 허용"""
                 allowed_modules = {
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
-                    'pandas', 'numpy', 'pd', 'np'
-                    'warnings'
+                    'pandas', 'numpy', 'pd', 'np',  # 쉼표 추가!
+                    'warnings'  # 이제 독립된 항목
                 }
                 if name in allowed_modules:
                     return __import__(name, *args, **kwargs)
                 raise ImportError(f"Module '{name}' is not allowed for security reasons")
             
-            # ✅ 수정: 안전한 실행 환경 구성
+            # 안전한 실행 환경 구성
             safe_globals = {
                 '__builtins__': {
                     # 기본 함수들
@@ -229,9 +225,14 @@ class LottoProAI:
                 'user_numbers': user_numbers or []
             }
             
-            # 코드 실행
+            # 코드 실행 (에러 핸들링 강화)
             logger.info(f"Executing algorithm: {algorithm_id}")
-            exec(code_content, safe_globals)
+            try:
+                exec(code_content, safe_globals)
+            except SyntaxError as e:
+                raise Exception(f"Syntax error in algorithm code: {str(e)}")
+            except Exception as e:
+                raise Exception(f"Runtime error: {str(e)}")
             
             # 예측 함수 호출 (여러 함수명 시도)
             result = None
@@ -440,7 +441,6 @@ def algorithms():
                          categories=categories,
                          difficulty_levels=difficulty_levels)
 
-# ✅ 수정: GET 방식의 execute 엔드포인트 (기존 유지)
 @app.route('/api/execute/<algorithm_id>')
 @rate_limit(60)
 def execute_algorithm(algorithm_id):
@@ -451,11 +451,10 @@ def execute_algorithm(algorithm_id):
     result = lotto_ai.execute_github_algorithm(algorithm_id)
     return jsonify(result)
 
-# ✅ 추가: POST 방식의 predict 엔드포인트
 @app.route('/api/predict', methods=['POST'])
 @rate_limit(60)
 def predict_numbers():
-    """알고리즘 예측 API (POST) - github-api.js에서 사용"""
+    """알고리즘 예측 API (POST)"""
     try:
         data = request.get_json()
         
@@ -624,7 +623,6 @@ def get_lottery_data():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
 
-# ✅ 수정: 프론트엔드가 기대하는 형식으로 응답
 @app.route('/api/algorithm-info')
 def get_all_algorithm_info():
     """전체 알고리즘 정보 조회"""
@@ -640,7 +638,7 @@ def get_all_algorithm_info():
         
         return jsonify({
             'status': 'success',
-            'info': unique_algorithms,  # ✅ 프론트엔드가 기대하는 형식
+            'info': unique_algorithms,
             'count': len(unique_algorithms),
             'timestamp': datetime.now().isoformat()
         })
