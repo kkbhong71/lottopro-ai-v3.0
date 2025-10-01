@@ -7,7 +7,10 @@
 <div class="algorithms-container">
     <div class="algorithms-header">
         <h1>🧠 AI 알고리즘</h1>
-        <p class="subtitle">각기 다른 방식으로 분석하는 8가지 독자적 AI 모델로<br>최고의 로또 예측 정확도를 경험해보세요</p>
+        <p class="subtitle">
+            각기 다른 방식으로 분석하는 8가지 독자적 AI 모델로<br>
+            최고의 로또 예측 정확도를 경험해보세요
+        </p>
     </div>
 
     <!-- 필터 컨트롤 -->
@@ -59,78 +62,145 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🧠 알고리즘 페이지 초기화');
 
-    // 정렬 이벤트
+    // ===== 정렬 이벤트 =====
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
         sortSelect.addEventListener('change', function() {
             const sortBy = this.value;
             const filterBy = document.getElementById('filter-select')?.value || 'all';
-            console.log('정렬 변경:', sortBy);
-            if (window.githubAPIManager) {
+            console.log('📊 정렬 변경:', sortBy);
+            
+            if (window.githubAPIManager && window.githubAPIManager.initialized) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+            } else {
+                console.warn('⚠️ GitHubAPIManager가 아직 초기화되지 않았습니다');
             }
         });
     }
 
-    // 필터 이벤트
+    // ===== 필터 이벤트 =====
     const filterSelect = document.getElementById('filter-select');
     if (filterSelect) {
         filterSelect.addEventListener('change', function() {
             const filterBy = this.value;
             const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
-            console.log('필터 변경:', filterBy);
-            if (window.githubAPIManager) {
+            console.log('🔍 필터 변경:', filterBy);
+            
+            if (window.githubAPIManager && window.githubAPIManager.initialized) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+            } else {
+                console.warn('⚠️ GitHubAPIManager가 아직 초기화되지 않았습니다');
             }
         });
     }
 
-    // 새로고침 버튼
+    // ===== 새로고침 버튼 =====
     const refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async function() {
-            console.log('새로고침 시작');
+            console.log('🔄 새로고침 시작');
+            
+            // 버튼 비활성화
             this.disabled = true;
             this.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">로딩 중...</span>';
             
-            if (window.githubAPIManager) {
-                await window.githubAPIManager.loadAlgorithmInfo();
-                const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
-                const filterBy = document.getElementById('filter-select')?.value || 'all';
-                window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+            try {
+                if (window.githubAPIManager) {
+                    // 알고리즘 정보 재로드
+                    await window.githubAPIManager.loadAlgorithmInfo();
+                    
+                    // 현재 설정으로 카드 렌더링
+                    const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
+                    const filterBy = document.getElementById('filter-select')?.value || 'all';
+                    window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
+                    
+                    // 성공 메시지
+                    if (window.showToast) {
+                        window.showToast('알고리즘 정보가 새로고침되었습니다', 'success');
+                    }
+                } else {
+                    throw new Error('GitHubAPIManager를 찾을 수 없습니다');
+                }
+            } catch (error) {
+                console.error('❌ 새로고침 실패:', error);
+                if (window.showToast) {
+                    window.showToast('새로고침 중 오류가 발생했습니다', 'error');
+                }
+            } finally {
+                // 버튼 복원
+                this.disabled = false;
+                this.innerHTML = '<span class="btn-icon">🔄</span><span class="btn-text">새로고침</span>';
             }
-            
-            this.disabled = false;
-            this.innerHTML = '<span class="btn-icon">🔄</span><span class="btn-text">새로고침</span>';
         });
     }
+
+    // ===== 초기화 확인 =====
+    console.log('📊 페이지 상태:', {
+        githubAPIManager: window.githubAPIManager ? '✅' : '❌',
+        initialized: window.githubAPIManager?.initialized ? '✅' : '❌',
+        algorithmCount: window.githubAPIManager ? Object.keys(window.githubAPIManager.algorithms).length : 0
+    });
 });
 
-// 번호 저장 함수
-function saveNumbers(numbers) {
-    console.log('번호 저장:', numbers);
+// ===== 전역 번호 저장 함수 (하위 호환성) =====
+// window.saveNumbers가 main.js에서 정의되어 있지만, 
+// 만약을 대비한 폴백 함수
+if (typeof window.saveNumbers === 'undefined') {
+    window.saveNumbers = function(numbers, algorithmName) {
+        console.log('💾 번호 저장 (폴백 함수):', numbers, algorithmName);
+        
+        try {
+            // 번호 유효성 검사
+            if (!Array.isArray(numbers) || numbers.length !== 6) {
+                throw new Error('잘못된 번호 형식');
+            }
+            
+            // 로컬 스토리지에서 기존 데이터 로드
+            const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+            
+            // 새 항목 생성
+            const newEntry = {
+                id: Date.now(),
+                numbers: numbers,
+                timestamp: new Date().toISOString(),
+                algorithm: algorithmName || 'AI 예측',
+                checked: false,
+                matches: 0
+            };
+            
+            // 맨 앞에 추가
+            savedNumbers.unshift(newEntry);
+            
+            // 최대 100개까지만 유지
+            const trimmed = savedNumbers.slice(0, 100);
+            
+            // 저장
+            localStorage.setItem('savedNumbers', JSON.stringify(trimmed));
+            
+            console.log('✅ 번호 저장 완료. 총 개수:', trimmed.length);
+            
+            // 성공 메시지
+            if (window.showToast) {
+                window.showToast('번호가 저장되었습니다!', 'success');
+            } else {
+                alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ 저장 실패:', error);
+            
+            if (window.showToast) {
+                window.showToast('번호 저장에 실패했습니다', 'error');
+            } else {
+                alert('번호 저장에 실패했습니다: ' + error.message);
+            }
+            
+            return false;
+        }
+    };
     
-    try {
-        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
-        const newEntry = {
-            id: Date.now(),
-            numbers: numbers,
-            timestamp: new Date().toISOString(),
-            algorithm: 'AI 예측',
-            checked: false
-        };
-        
-        savedNumbers.unshift(newEntry); // 맨 앞에 추가
-        localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
-        
-        alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
-        
-        // 저장된 개수 표시
-        console.log('총 저장된 번호:', savedNumbers.length);
-    } catch (error) {
-        console.error('저장 실패:', error);
-        alert('번호 저장에 실패했습니다.');
-    }
+    console.log('📦 saveNumbers 폴백 함수 등록됨');
 }
 </script>
 {% endblock %}
