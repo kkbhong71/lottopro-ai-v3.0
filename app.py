@@ -197,6 +197,7 @@ class LottoProAI:
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
                     'pandas', 'numpy', 'pd', 'np'
+                    'warnings'
                 }
                 if name in allowed_modules:
                     return __import__(name, *args, **kwargs)
