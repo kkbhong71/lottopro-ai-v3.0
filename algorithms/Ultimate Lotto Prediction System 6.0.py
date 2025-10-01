@@ -7,6 +7,7 @@ Ultimate Lotto Prediction System 6.0 - 웹앱 표준화 버전
 - 핵심 분석 방법론 통합 (8가지 주요 기법)
 - 웹앱 안전 실행 환경 호환
 - 한국 로또(6/45) 최적화
+- 안전한 warnings 처리 적용
 """
 
 import pandas as pd
@@ -14,10 +15,14 @@ import numpy as np
 import random
 from collections import Counter, defaultdict
 from datetime import datetime
-import warnings
 
-# 경고 메시지 무시
-warnings.filterwarnings('ignore')
+# 안전한 warnings 처리
+try:
+    import warnings
+    warnings.filterwarnings('ignore')
+except ImportError:
+    # warnings 모듈을 사용할 수 없는 환경
+    pass
 
 def predict_numbers():
     """
