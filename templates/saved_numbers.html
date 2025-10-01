@@ -1,141 +1,167 @@
 {% extends "base.html" %}
 
-{% block title %}저장된 번호 - LottoPro-AI v3.0{% endblock %}
+{% block title %}저장된 번호 - LottoPro-AI{% endblock %}
+{% block nav_saved %}active{% endblock %}
 
-{% block extra_head %}
+{% block content %}
+<div class="saved-numbers-container">
+    <div class="page-header">
+        <h1>💾 저장된 번호</h1>
+        <p class="subtitle">AI가 예측한 번호들을 관리하고 당첨번호와 비교해보세요</p>
+    </div>
+
+    <!-- 통계 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                📊
+            </div>
+            <div class="stat-number" id="total-predictions">0</div>
+            <div class="stat-label">총 예측수</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                ✓
+            </div>
+            <div class="stat-number" id="total-matches">0</div>
+            <div class="stat-label">총 적중수</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                🏆
+            </div>
+            <div class="stat-number" id="best-match">0</div>
+            <div class="stat-label">최고 적중</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                📈
+            </div>
+            <div class="stat-number" id="accuracy-rate">0%</div>
+            <div class="stat-label">정확도</div>
+        </div>
+    </div>
+
+    <!-- 필터 및 정렬 -->
+    <div class="filter-controls">
+        <div class="control-group">
+            <label for="sort-saved">정렬:</label>
+            <select id="sort-saved" class="control-select">
+                <option value="newest">최신순</option>
+                <option value="oldest">오래된순</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="filter-saved">필터:</label>
+            <select id="filter-saved" class="control-select">
+                <option value="all">전체</option>
+                <option value="checked">확인됨</option>
+                <option value="unchecked">미확인</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <button id="clear-all-btn" class="control-button" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <span class="btn-icon">🗑️</span>
+                <span class="btn-text">전체 삭제</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 저장된 번호 목록 -->
+    <div id="saved-numbers-list" class="saved-numbers-list">
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>저장된 번호가 없습니다</h3>
+            <p>알고리즘 페이지에서 번호를 예측하고 저장해보세요!</p>
+            <a href="/algorithms" class="btn-primary">
+                <span>🧠</span>
+                <span>알고리즘으로 이동</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
 <style>
-/* 저장된 번호 페이지 전용 스타일 */
-.prediction-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
+.saved-numbers-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.saved-numbers-list {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.number-card {
+    background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xl);
-    padding: var(--space-lg);
-    margin-bottom: var(--space-lg);
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
     transition: all var(--transition-normal);
-    position: relative;
-    overflow: hidden;
 }
 
-.prediction-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 3px;
-    background: var(--gradient-primary);
-    transition: left var(--transition-normal);
-}
-
-.prediction-card:hover {
+.number-card:hover {
     transform: translateY(-5px);
-    box-shadow: var(--shadow-xl), 0 0 30px rgba(102, 126, 234, 0.2);
-    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: var(--shadow-xl);
+    border-color: rgba(102, 126, 234, 0.5);
 }
 
-.prediction-card:hover::before {
-    left: 0;
-}
-
-.prediction-card.checked {
-    border-color: rgba(34, 197, 94, 0.5);
-    background: rgba(34, 197, 94, 0.05);
-}
-
-.prediction-card.checked::before {
-    background: var(--gradient-success);
-    left: 0;
-}
-
-.prediction-header {
+.number-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: var(--space-md);
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-}
-
-.prediction-meta {
-    flex: 1;
-    min-width: 200px;
-}
-
-.prediction-date {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: var(--space-xs);
-}
-
-.prediction-algorithm {
-    display: inline-flex;
     align-items: center;
-    background: var(--gradient-primary);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.number-card-title {
+    font-size: 1.1rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.prediction-actions {
-    display: flex;
-    gap: var(--space-xs);
-    flex-wrap: wrap;
-}
-
-.action-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-    background: var(--glass-bg);
     color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all var(--transition-fast);
+}
+
+.number-card-date {
     font-size: 0.875rem;
+    color: var(--text-secondary);
 }
 
-.action-btn:hover {
-    transform: scale(1.1);
-    border-color: transparent;
-}
-
-.action-btn.edit:hover {
-    background: var(--gradient-accent);
-    color: white;
-}
-
-.action-btn.check:hover {
-    background: var(--gradient-success);
-    color: white;
-}
-
-.action-btn.delete:hover {
-    background: var(--gradient-warning);
-    color: white;
-}
-
-.action-btn.copy:hover {
-    background: var(--gradient-secondary);
-    color: white;
-}
-
-.prediction-numbers {
+.number-card-numbers {
     display: flex;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-md);
+    gap: 0.75rem;
+    margin: 1.5rem 0;
     flex-wrap: wrap;
-    justify-content: center;
 }
 
-.prediction-number {
+.saved-number {
     width: 45px;
     height: 45px;
     border-radius: 50%;
@@ -144,318 +170,77 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.125rem;
-    font-weight: 700;
+    font-weight: bold;
+    font-size: 1.1rem;
     box-shadow: var(--shadow-md);
-    transition: all var(--transition-fast);
 }
 
-.prediction-number:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-lg);
-}
-
-.prediction-number.matched {
-    background: var(--gradient-success);
-    animation: matchPulse 1s ease-in-out infinite alternate;
-}
-
-@keyframes matchPulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-    }
-    100% {
-        transform: scale(1.05);
-        box-shadow: 0 0 20px 0 rgba(34, 197, 94, 0.4);
-    }
-}
-
-.match-result {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: var(--radius-lg);
-    padding: var(--space-md);
-    margin-top: var(--space-md);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.match-summary {
+.number-card-actions {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-sm);
-    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
 }
 
-.match-count {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.match-count .number {
-    color: #22c55e;
-    font-size: 2rem;
-}
-
-.match-prize {
-    color: #fbbf24;
+.action-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: var(--radius-md);
     font-weight: 600;
-}
-
-.matched-numbers {
+    cursor: pointer;
+    transition: all var(--transition-fast);
     display: flex;
-    gap: var(--space-xs);
-    margin-top: var(--space-sm);
-    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
+    gap: 0.5rem;
 }
 
-.matched-number {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+.btn-check {
     background: var(--gradient-success);
     color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
 }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-lg);
-    margin-bottom: var(--space-xl);
+.btn-delete {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
 }
 
-.stat-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--space-lg);
-    text-align: center;
-    transition: all var(--transition-normal);
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-xl);
-    border-color: rgba(102, 126, 234, 0.3);
-}
-
-.stat-value {
-    font-size: 2.5rem;
-    font-weight: 800;
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: var(--space-xs);
-}
-
-.stat-label {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
+.action-btn:hover {
+    transform: translateY(-2px);
 }
 
 .empty-state {
     text-align: center;
-    padding: var(--space-xl) var(--space-lg);
-    color: var(--text-secondary);
+    padding: 4rem 2rem;
 }
 
-.empty-state i {
+.empty-icon {
     font-size: 4rem;
-    color: var(--text-muted);
-    margin-bottom: var(--space-lg);
+    margin-bottom: 1rem;
 }
 
 .empty-state h3 {
-    color: var(--text-primary);
     font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: var(--space-md);
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
 }
 
 .empty-state p {
-    max-width: 400px;
-    margin: 0 auto var(--space-lg);
-}
-
-.filter-bar {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--space-lg);
-    margin-bottom: var(--space-xl);
-    display: flex;
-    gap: var(--space-md);
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.filter-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.filter-label {
-    color: var(--text-primary);
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.filter-select {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--space-xs) var(--space-sm);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    cursor: pointer;
-}
-
-.filter-select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-}
-
-.search-input {
-    flex: 1;
-    min-width: 200px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--space-sm) var(--space-md);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-}
-
-.search-input::placeholder {
-    color: var(--text-muted);
-}
-
-.bulk-actions {
-    display: flex;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
-    flex-wrap: wrap;
-}
-
-.bulk-action-btn {
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-    background: var(--glass-bg);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-}
-
-.bulk-action-btn:hover {
-    background: var(--gradient-primary);
-    color: white;
-    border-color: transparent;
-}
-
-.bulk-action-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.check-modal {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: var(--space-xl);
-    max-width: 500px;
-    width: 90%;
-}
-
-.winning-numbers-input {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
-}
-
-.winning-number-input {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    background: var(--glass-bg);
-    border: 2px solid var(--border-color);
-    color: var(--text-primary);
-    text-align: center;
-    font-weight: 600;
-    font-size: 1.125rem;
-    transition: all var(--transition-fast);
-}
-
-.winning-number-input:focus {
-    outline: none;
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.1);
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
 }
 
 @media (max-width: 768px) {
-    .prediction-header {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .prediction-actions {
-        justify-content: center;
-        margin-top: var(--space-sm);
-    }
-    
-    .filter-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .filter-group {
-        justify-content: space-between;
-    }
-    
-    .bulk-actions {
-        justify-content: center;
-    }
-    
     .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
     }
     
-    .winning-numbers-input {
-        grid-template-columns: repeat(3, 1fr);
-        gap: var(--space-md);
+    .number-card-numbers {
+        gap: 0.5rem;
     }
     
-    .prediction-numbers {
-        justify-content: center;
-    }
-    
-    .prediction-number {
+    .saved-number {
         width: 40px;
         height: 40px;
         font-size: 1rem;
@@ -464,733 +249,178 @@
 </style>
 {% endblock %}
 
-{% block content %}
-<!-- 헤더 섹션 -->
-<section class="py-20">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-12">
-            <h1 class="text-5xl md:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent mb-6">
-                저장된 번호
-            </h1>
-            <p class="text-xl text-purple-200 max-w-3xl mx-auto">
-                AI가 예측한 번호들을 관리하고 <span class="text-pink-300 font-bold">당첨번호와 비교</span>해보세요
-            </p>
-        </div>
-        
-        <!-- 통계 카드 -->
-        <div class="stats-grid" id="user-stats">
-            <div class="stat-card">
-                <div class="stat-value" id="total-predictions">0</div>
-                <div class="stat-label">총 예측수</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="total-matches">0</div>
-                <div class="stat-label">총 적중수</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="best-match">0</div>
-                <div class="stat-label">최고 적중</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="accuracy-rate">0%</div>
-                <div class="stat-label">정확도</div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- 메인 컨텐츠 -->
-<section class="pb-20">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- 필터 바 -->
-        <div class="filter-bar">
-            <div class="filter-group">
-                <label class="filter-label">정렬:</label>
-                <select id="sort-select" class="filter-select">
-                    <option value="date-desc">최신순</option>
-                    <option value="date-asc">오래된순</option>
-                    <option value="matches-desc">적중수 높은순</option>
-                    <option value="matches-asc">적중수 낮은순</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">필터:</label>
-                <select id="filter-select" class="filter-select">
-                    <option value="all">전체</option>
-                    <option value="checked">확인됨</option>
-                    <option value="unchecked">미확인</option>
-                    <option value="matches">적중</option>
-                </select>
-            </div>
-            
-            <input type="text" id="search-input" class="search-input" placeholder="알고리즘 이름으로 검색...">
-            
-            <button id="add-manual" class="btn-primary">
-                <i class="fas fa-plus mr-2"></i>수동 추가
-            </button>
-        </div>
-        
-        <!-- 일괄 작업 -->
-        <div class="bulk-actions" id="bulk-actions" style="display: none;">
-            <button id="select-all" class="bulk-action-btn">
-                <i class="fas fa-check-square"></i>전체 선택
-            </button>
-            <button id="bulk-check" class="bulk-action-btn">
-                <i class="fas fa-search"></i>선택항목 확인
-            </button>
-            <button id="bulk-delete" class="bulk-action-btn">
-                <i class="fas fa-trash"></i>선택항목 삭제
-            </button>
-            <span id="selection-count" class="text-purple-300 text-sm">0개 선택됨</span>
-        </div>
-        
-        <!-- 예측 목록 -->
-        <div id="predictions-container">
-            <!-- 예측 카드들이 동적으로 로드됩니다 -->
-        </div>
-        
-        <!-- 빈 상태 -->
-        <div id="empty-state" class="glass-card empty-state" style="display: none;">
-            <i class="fas fa-inbox"></i>
-            <h3>저장된 예측이 없습니다</h3>
-            <p>AI 알고리즘을 실행하고 예측을 저장해보세요. 당첨번호와 비교하여 정확도를 확인할 수 있습니다.</p>
-            <a href="/algorithms" class="btn-primary">
-                <i class="fas fa-brain mr-2"></i>AI 예측 시작하기
-            </a>
-        </div>
-        
-        <!-- 로딩 상태 -->
-        <div id="loading-state" class="text-center py-12">
-            <div class="spinner mx-auto mb-4"></div>
-            <p class="text-purple-300">저장된 번호를 불러오는 중...</p>
-        </div>
-    </div>
-</section>
-
-<!-- 당첨번호 확인 모달 -->
-<div id="check-modal" class="info-modal-overlay hidden">
-    <div class="check-modal">
-        <div class="modal-header">
-            <h2><i class="fas fa-search mr-3"></i>당첨번호 확인</h2>
-            <button class="modal-close" id="close-check-modal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="text-purple-300 mb-6">당첨번호를 입력하여 예측 결과를 확인해보세요.</p>
-            
-            <div class="winning-numbers-input" id="winning-numbers-grid">
-                <input type="number" class="winning-number-input" placeholder="1" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="2" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="3" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="4" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="5" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="6" min="1" max="45">
-            </div>
-            
-            <div class="flex gap-4 justify-center">
-                <button id="auto-fetch-winning" class="btn-secondary">
-                    <i class="fas fa-download mr-2"></i>최신 당첨번호 가져오기
-                </button>
-                <button id="confirm-check" class="btn-primary">
-                    <i class="fas fa-check mr-2"></i>확인하기
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 수동 추가 모달 -->
-<div id="manual-modal" class="info-modal-overlay hidden">
-    <div class="check-modal">
-        <div class="modal-header">
-            <h2><i class="fas fa-plus mr-3"></i>수동 번호 추가</h2>
-            <button class="modal-close" id="close-manual-modal">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p class="text-purple-300 mb-6">직접 번호를 입력하여 예측에 추가해보세요.</p>
-            
-            <div class="winning-numbers-input" id="manual-numbers-grid">
-                <input type="number" class="winning-number-input" placeholder="1" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="2" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="3" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="4" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="5" min="1" max="45">
-                <input type="number" class="winning-number-input" placeholder="6" min="1" max="45">
-            </div>
-            
-            <div class="mb-4">
-                <label class="filter-label mb-2 block">메모 (선택사항)</label>
-                <input type="text" id="manual-note" class="search-input" placeholder="예: 가족 생일, 특별한 날짜 등">
-            </div>
-            
-            <div class="flex gap-4 justify-center">
-                <button id="random-manual" class="btn-secondary">
-                    <i class="fas fa-random mr-2"></i>랜덤 생성
-                </button>
-                <button id="confirm-manual" class="btn-primary">
-                    <i class="fas fa-save mr-2"></i>저장하기
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
 {% block extra_js %}
 <script>
-class SavedNumbersManager {
-    constructor() {
-        this.predictions = [];
-        this.selectedPredictions = [];
-        this.currentFilter = 'all';
-        this.currentSort = 'date-desc';
-        this.currentPredictionForCheck = null;
-        this.init();
-    }
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('💾 저장된 번호 페이지 초기화');
+    loadSavedNumbers();
+
+    // 정렬 이벤트
+    document.getElementById('sort-saved')?.addEventListener('change', loadSavedNumbers);
     
-    async init() {
-        this.setupEventListeners();
-        await this.loadPredictions();
-        this.renderPredictions();
-        console.log('💾 저장된 번호 관리자 초기화 완료');
-    }
+    // 필터 이벤트
+    document.getElementById('filter-saved')?.addEventListener('change', loadSavedNumbers);
     
-    setupEventListeners() {
-        // 필터링 및 정렬
-        document.getElementById('sort-select').addEventListener('change', (e) => {
-            this.currentSort = e.target.value;
-            this.renderPredictions();
-        });
-        
-        document.getElementById('filter-select').addEventListener('change', (e) => {
-            this.currentFilter = e.target.value;
-            this.renderPredictions();
-        });
-        
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            this.searchPredictions(e.target.value);
-        });
-        
-        // 일괄 작업
-        document.getElementById('select-all').addEventListener('click', () => this.selectAll());
-        document.getElementById('bulk-check').addEventListener('click', () => this.bulkCheck());
-        document.getElementById('bulk-delete').addEventListener('click', () => this.bulkDelete());
-        
-        // 수동 추가
-        document.getElementById('add-manual').addEventListener('click', () => this.showManualModal());
-        
-        // 모달 관련
-        this.setupModalListeners();
-    }
-    
-    setupModalListeners() {
-        // 확인 모달
-        document.getElementById('close-check-modal').addEventListener('click', () => this.closeModal('check-modal'));
-        document.getElementById('auto-fetch-winning').addEventListener('click', () => this.fetchLatestWinning());
-        document.getElementById('confirm-check').addEventListener('click', () => this.confirmCheck());
-        
-        // 수동 추가 모달
-        document.getElementById('close-manual-modal').addEventListener('click', () => this.closeModal('manual-modal'));
-        document.getElementById('random-manual').addEventListener('click', () => this.generateRandomManual());
-        document.getElementById('confirm-manual').addEventListener('click', () => this.confirmManual());
-        
-        // 모달 외부 클릭
-        document.getElementById('check-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'check-modal') this.closeModal('check-modal');
-        });
-        document.getElementById('manual-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'manual-modal') this.closeModal('manual-modal');
-        });
-        
-        // 당첨번호 입력 자동 이동
-        this.setupNumberInputs('winning-numbers-grid');
-        this.setupNumberInputs('manual-numbers-grid');
-    }
-    
-    setupNumberInputs(containerId) {
-        const container = document.getElementById(containerId);
-        const inputs = container.querySelectorAll('input');
-        
-        inputs.forEach((input, index) => {
-            input.addEventListener('input', (e) => {
-                const value = parseInt(e.target.value);
-                
-                // 범위 검증
-                if (value < 1 || value > 45) {
-                    e.target.classList.add('input-error');
-                } else {
-                    e.target.classList.remove('input-error');
-                    
-                    // 다음 입력으로 이동
-                    if (value && index < inputs.length - 1) {
-                        setTimeout(() => inputs[index + 1].focus(), 100);
-                    }
-                }
-                
-                this.validateNumberInputs(containerId);
-            });
-            
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && index < inputs.length - 1) {
-                    inputs[index + 1].focus();
-                }
-            });
-        });
-    }
-    
-    validateNumberInputs(containerId) {
-        const container = document.getElementById(containerId);
-        const inputs = container.querySelectorAll('input');
-        const values = [];
-        
-        inputs.forEach(input => {
-            input.classList.remove('input-duplicate');
-            const value = parseInt(input.value);
-            
-            if (value && value >= 1 && value <= 45) {
-                if (values.includes(value)) {
-                    // 중복 발견
-                    const duplicateInputs = Array.from(inputs).filter(inp => parseInt(inp.value) === value);
-                    duplicateInputs.forEach(inp => inp.classList.add('input-duplicate'));
-                } else {
-                    values.push(value);
-                }
-            }
-        });
-        
-        return values.length === 6 && values.every(v => v >= 1 && v <= 45);
-    }
-    
-    async loadPredictions() {
-        try {
-            document.getElementById('loading-state').style.display = 'block';
-            
-            const response = await fetch('/api/user-predictions');
-            const data = await response.json();
-            
-            this.predictions = data.predictions || [];
-            this.updateStats(data.stats || {});
-            
-        } catch (error) {
-            console.error('예측 로드 실패:', error);
-            window.showToast('데이터를 불러오는데 실패했습니다', 'error');
-        } finally {
-            document.getElementById('loading-state').style.display = 'none';
+    // 전체 삭제 버튼
+    document.getElementById('clear-all-btn')?.addEventListener('click', function() {
+        if (confirm('정말로 모든 저장된 번호를 삭제하시겠습니까?')) {
+            localStorage.removeItem('savedNumbers');
+            loadSavedNumbers();
+            alert('모든 번호가 삭제되었습니다.');
         }
-    }
-    
-    updateStats(stats) {
-        document.getElementById('total-predictions').textContent = stats.total_predictions || 0;
-        document.getElementById('total-matches').textContent = stats.total_matches || 0;
-        document.getElementById('best-match').textContent = stats.best_match || 0;
+    });
+});
+
+function loadSavedNumbers() {
+    try {
+        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+        console.log('저장된 번호 로드:', savedNumbers.length);
         
-        const accuracy = stats.total_predictions > 0 
-            ? Math.round((stats.total_matches / (stats.total_predictions * 6)) * 100)
-            : 0;
-        document.getElementById('accuracy-rate').textContent = accuracy + '%';
-    }
-    
-    renderPredictions() {
-        const container = document.getElementById('predictions-container');
-        const emptyState = document.getElementById('empty-state');
+        // 통계 업데이트
+        updateStats(savedNumbers);
         
-        let filteredPredictions = this.filterPredictions();
-        filteredPredictions = this.sortPredictions(filteredPredictions);
+        // 필터 및 정렬
+        const sortBy = document.getElementById('sort-saved')?.value || 'newest';
+        const filterBy = document.getElementById('filter-saved')?.value || 'all';
         
-        if (filteredPredictions.length === 0) {
-            container.innerHTML = '';
-            emptyState.style.display = 'block';
-            return;
+        let filtered = [...savedNumbers];
+        
+        // 필터 적용
+        if (filterBy === 'checked') {
+            filtered = filtered.filter(n => n.checked);
+        } else if (filterBy === 'unchecked') {
+            filtered = filtered.filter(n => !n.checked);
         }
         
-        emptyState.style.display = 'none';
-        container.innerHTML = '';
+        // 정렬 적용
+        if (sortBy === 'newest') {
+            filtered.sort((a, b) => b.id - a.id);
+        } else if (sortBy === 'oldest') {
+            filtered.sort((a, b) => a.id - b.id);
+        }
         
-        filteredPredictions.forEach(prediction => {
-            const card = this.createPredictionCard(prediction);
-            container.appendChild(card);
-        });
+        // 목록 렌더링
+        renderNumbersList(filtered);
         
-        // 애니메이션
-        const cards = container.children;
-        Array.from(cards).forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.5s ease-out';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 50);
-        });
+    } catch (error) {
+        console.error('번호 로드 실패:', error);
+    }
+}
+
+function updateStats(savedNumbers) {
+    const total = savedNumbers.length;
+    const checked = savedNumbers.filter(n => n.checked).length;
+    const totalMatches = savedNumbers.reduce((sum, n) => sum + (n.matches || 0), 0);
+    const bestMatch = Math.max(...savedNumbers.map(n => n.matches || 0), 0);
+    const accuracy = total > 0 ? ((totalMatches / (total * 6)) * 100).toFixed(1) : 0;
+    
+    document.getElementById('total-predictions').textContent = total;
+    document.getElementById('total-matches').textContent = totalMatches;
+    document.getElementById('best-match').textContent = bestMatch;
+    document.getElementById('accuracy-rate').textContent = accuracy + '%';
+}
+
+function renderNumbersList(numbers) {
+    const container = document.getElementById('saved-numbers-list');
+    
+    if (numbers.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <h3>저장된 번호가 없습니다</h3>
+                <p>알고리즘 페이지에서 번호를 예측하고 저장해보세요!</p>
+                <a href="/algorithms" class="btn-primary">
+                    <span>🧠</span>
+                    <span>알고리즘으로 이동</span>
+                </a>
+            </div>
+        `;
+        return;
     }
     
-    filterPredictions() {
-        return this.predictions.filter(prediction => {
-            switch(this.currentFilter) {
-                case 'checked':
-                    return prediction.is_checked;
-                case 'unchecked':
-                    return !prediction.is_checked;
-                case 'matches':
-                    return prediction.is_checked && prediction.match_result && prediction.match_result.matches > 0;
-                default:
-                    return true;
-            }
-        });
-    }
-    
-    sortPredictions(predictions) {
-        return predictions.sort((a, b) => {
-            switch(this.currentSort) {
-                case 'date-asc':
-                    return new Date(a.timestamp) - new Date(b.timestamp);
-                case 'matches-desc':
-                    const aMatches = a.match_result ? a.match_result.matches : -1;
-                    const bMatches = b.match_result ? b.match_result.matches : -1;
-                    return bMatches - aMatches;
-                case 'matches-asc':
-                    const aMatchesAsc = a.match_result ? a.match_result.matches : Infinity;
-                    const bMatchesAsc = b.match_result ? b.match_result.matches : Infinity;
-                    return aMatchesAsc - bMatchesAsc;
-                case 'date-desc':
-                default:
-                    return new Date(b.timestamp) - new Date(a.timestamp);
-            }
-        });
-    }
-    
-    searchPredictions(query) {
-        const container = document.getElementById('predictions-container');
-        const cards = container.querySelectorAll('.prediction-card');
-        
-        cards.forEach(card => {
-            const algorithmName = card.querySelector('.prediction-algorithm').textContent.toLowerCase();
-            const isMatch = algorithmName.includes(query.toLowerCase());
-            card.style.display = isMatch ? 'block' : 'none';
-        });
-    }
-    
-    createPredictionCard(prediction) {
-        const card = document.createElement('div');
-        card.className = `prediction-card ${prediction.is_checked ? 'checked' : ''}`;
-        card.dataset.id = prediction.id;
-        
-        const date = new Date(prediction.timestamp).toLocaleDateString('ko-KR', {
+    container.innerHTML = numbers.map(item => {
+        const date = new Date(item.timestamp);
+        const dateStr = date.toLocaleString('ko-KR', {
             year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
             hour: '2-digit',
             minute: '2-digit'
         });
         
-        card.innerHTML = `
-            <div class="prediction-header">
-                <div class="prediction-meta">
-                    <div class="prediction-date">${date}</div>
-                    <div class="prediction-algorithm">${this.getAlgorithmDisplayName(prediction.algorithm)}</div>
-                </div>
-                <div class="prediction-actions">
-                    <button class="action-btn copy" title="복사" onclick="savedNumbersManager.copyNumbers('${prediction.id}')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                    <button class="action-btn check" title="당첨 확인" onclick="savedNumbersManager.checkPrediction('${prediction.id}')">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="action-btn delete" title="삭제" onclick="savedNumbersManager.deletePrediction('${prediction.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="prediction-numbers">
-                ${prediction.numbers.map(num => `
-                    <div class="prediction-number ${this.isNumberMatched(num, prediction) ? 'matched' : ''}">
-                        ${num}
-                    </div>
-                `).join('')}
-            </div>
-            
-            ${prediction.is_checked ? this.renderMatchResult(prediction.match_result) : ''}
-        `;
-        
-        return card;
-    }
-    
-    getAlgorithmDisplayName(algorithmId) {
-        if (window.githubManager && window.githubManager.algorithms[algorithmId]) {
-            return window.githubManager.algorithms[algorithmId].name;
-        }
-        return algorithmId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-    
-    isNumberMatched(number, prediction) {
-        if (!prediction.is_checked || !prediction.match_result) return false;
-        return prediction.match_result.matched_numbers.includes(number);
-    }
-    
-    renderMatchResult(matchResult) {
-        if (!matchResult) return '';
-        
-        const prizeInfo = this.getPrizeInfo(matchResult.matches);
+        const numbersHtml = item.numbers.map(num => 
+            `<span class="saved-number">${num}</span>`
+        ).join('');
         
         return `
-            <div class="match-result">
-                <div class="match-summary">
-                    <div class="match-count">
-                        적중: <span class="number">${matchResult.matches}</span>개
-                    </div>
-                    <div class="match-prize">${prizeInfo}</div>
+            <div class="number-card">
+                <div class="number-card-header">
+                    <div class="number-card-title">${item.algorithm || 'AI 예측'}</div>
+                    <div class="number-card-date">${dateStr}</div>
                 </div>
-                
-                <div class="text-sm text-gray-400 mb-2">매치된 번호:</div>
-                <div class="matched-numbers">
-                    ${matchResult.matched_numbers.map(num => `
-                        <div class="matched-number">${num}</div>
-                    `).join('')}
+                <div class="number-card-numbers">
+                    ${numbersHtml}
+                </div>
+                ${item.checked ? `
+                    <div style="padding: 1rem; background: rgba(34, 197, 94, 0.1); border-radius: 0.5rem; margin-top: 1rem;">
+                        <strong style="color: #22c55e;">✓ 확인 완료</strong>
+                        <p style="margin: 0.5rem 0 0; color: var(--text-secondary); font-size: 0.875rem;">
+                            ${item.matches || 0}개 일치
+                        </p>
+                    </div>
+                ` : ''}
+                <div class="number-card-actions">
+                    <button class="action-btn btn-check" onclick="checkNumber(${item.id})">
+                        <span>✓</span>
+                        <span>당첨 확인</span>
+                    </button>
+                    <button class="action-btn btn-delete" onclick="deleteNumber(${item.id})">
+                        <span>🗑️</span>
+                        <span>삭제</span>
+                    </button>
                 </div>
             </div>
         `;
-    }
+    }).join('');
+}
+
+function checkNumber(id) {
+    const winningNumbers = prompt('당첨번호 6개를 쉼표로 구분하여 입력하세요.\n예: 3,12,23,31,38,42');
+    if (!winningNumbers) return;
     
-    getPrizeInfo(matches) {
-        const prizes = {
-            6: '1등 🎉',
-            5: '2등 🏆',
-            4: '3등 🥉',
-            3: '4등 💰',
-            2: '5등 💵',
-            1: '꽝 😅',
-            0: '꽝 😭'
-        };
-        
-        return prizes[matches] || '꽝 😅';
-    }
-    
-    async copyNumbers(predictionId) {
-        const prediction = this.predictions.find(p => p.id === predictionId);
-        if (!prediction) return;
-        
-        const numbersText = prediction.numbers.join(', ');
-        
-        try {
-            await navigator.clipboard.writeText(numbersText);
-            window.showToast('번호가 복사되었습니다', 'success', 2000);
-        } catch (error) {
-            // 폴백
-            const textArea = document.createElement('textarea');
-            textArea.value = numbersText;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            
-            window.showToast('번호가 복사되었습니다', 'success', 2000);
-        }
-    }
-    
-    checkPrediction(predictionId) {
-        this.currentPredictionForCheck = predictionId;
-        this.showModal('check-modal');
-    }
-    
-    async deletePrediction(predictionId) {
-        if (!confirm('이 예측을 삭제하시겠습니까?')) return;
-        
-        try {
-            // API 호출로 서버에서 삭제
-            const response = await fetch(`/api/delete-prediction/${predictionId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                // 로컬에서도 제거
-                this.predictions = this.predictions.filter(p => p.id !== predictionId);
-                this.renderPredictions();
-                window.showToast('예측이 삭제되었습니다', 'success');
-            } else {
-                window.showToast('삭제에 실패했습니다', 'error');
-            }
-        } catch (error) {
-            console.error('삭제 실패:', error);
-            window.showToast('삭제 중 오류가 발생했습니다', 'error');
-        }
-    }
-    
-    showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal.classList.remove('hidden');
-        setTimeout(() => modal.classList.add('show'), 10);
-    }
-    
-    closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal.classList.remove('show');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-    }
-    
-    async fetchLatestWinning() {
-        try {
-            // 최신 당첨번호 API 호출
-            const response = await fetch('/api/latest-winning-numbers');
-            const data = await response.json();
-            
-            if (data.status === 'success' && data.numbers) {
-                const inputs = document.querySelectorAll('#winning-numbers-grid input');
-                data.numbers.forEach((num, index) => {
-                    if (inputs[index]) {
-                        inputs[index].value = num;
-                    }
-                });
-                
-                window.showToast('최신 당첨번호를 가져왔습니다', 'success');
-            } else {
-                window.showToast('당첨번호를 가져올 수 없습니다', 'warning');
-            }
-        } catch (error) {
-            console.error('당첨번호 가져오기 실패:', error);
-            window.showToast('당첨번호를 가져올 수 없습니다', 'error');
-        }
-    }
-    
-    async confirmCheck() {
-        if (!this.validateNumberInputs('winning-numbers-grid')) {
-            window.showToast('올바른 당첨번호를 입력해주세요 (1-45, 중복 없음)', 'warning');
+    try {
+        const numbers = winningNumbers.split(',').map(n => parseInt(n.trim()));
+        if (numbers.length !== 6 || numbers.some(n => isNaN(n) || n < 1 || n > 45)) {
+            alert('올바른 번호 형식이 아닙니다.');
             return;
         }
         
-        const inputs = document.querySelectorAll('#winning-numbers-grid input');
-        const winningNumbers = Array.from(inputs).map(input => parseInt(input.value));
+        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+        const item = savedNumbers.find(n => n.id === id);
+        if (!item) return;
         
-        try {
-            const response = await fetch('/api/compare-numbers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prediction_id: this.currentPredictionForCheck,
-                    winning_numbers: winningNumbers
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                // 로컬 데이터 업데이트
-                const prediction = this.predictions.find(p => p.id === this.currentPredictionForCheck);
-                if (prediction) {
-                    prediction.is_checked = true;
-                    prediction.match_result = result.result;
-                }
-                
-                this.closeModal('check-modal');
-                this.renderPredictions();
-                
-                const matches = result.matches;
-                const prizeInfo = this.getPrizeInfo(matches);
-                window.showToast(`결과: ${matches}개 적중! ${prizeInfo}`, matches > 0 ? 'success' : 'info', 5000);
-                
-            } else {
-                window.showToast('확인 중 오류가 발생했습니다', 'error');
-            }
-            
-        } catch (error) {
-            console.error('당첨 확인 실패:', error);
-            window.showToast('확인 중 오류가 발생했습니다', 'error');
-        }
-    }
-    
-    showManualModal() {
-        this.showModal('manual-modal');
-    }
-    
-    generateRandomManual() {
-        const numbers = [];
-        while (numbers.length < 6) {
-            const num = Math.floor(Math.random() * 45) + 1;
-            if (!numbers.includes(num)) {
-                numbers.push(num);
-            }
-        }
-        numbers.sort((a, b) => a - b);
+        const matches = item.numbers.filter(n => numbers.includes(n)).length;
+        item.checked = true;
+        item.matches = matches;
         
-        const inputs = document.querySelectorAll('#manual-numbers-grid input');
-        numbers.forEach((num, index) => {
-            if (inputs[index]) {
-                inputs[index].value = num;
-            }
-        });
-    }
-    
-    async confirmManual() {
-        if (!this.validateNumberInputs('manual-numbers-grid')) {
-            window.showToast('올바른 번호를 입력해주세요 (1-45, 중복 없음)', 'warning');
-            return;
-        }
+        localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
         
-        const inputs = document.querySelectorAll('#manual-numbers-grid input');
-        const numbers = Array.from(inputs).map(input => parseInt(input.value)).sort((a, b) => a - b);
-        const note = document.getElementById('manual-note').value;
+        alert(`${matches}개 번호가 일치합니다!`);
+        loadSavedNumbers();
         
-        try {
-            const response = await fetch('/api/save-prediction', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    numbers: numbers,
-                    algorithm: 'manual',
-                    timestamp: new Date().toISOString(),
-                    note: note
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'success') {
-                await this.loadPredictions();
-                this.renderPredictions();
-                this.closeModal('manual-modal');
-                
-                // 입력 초기화
-                inputs.forEach(input => input.value = '');
-                document.getElementById('manual-note').value = '';
-                
-                window.showToast('수동 번호가 추가되었습니다', 'success');
-            } else {
-                window.showToast('저장에 실패했습니다', 'error');
-            }
-        } catch (error) {
-            console.error('수동 저장 실패:', error);
-            window.showToast('저장 중 오류가 발생했습니다', 'error');
-        }
-    }
-    
-    // 일괄 작업 메서드들
-    selectAll() {
-        // 구현 예정
-        console.log('전체 선택 기능');
-    }
-    
-    bulkCheck() {
-        // 구현 예정
-        console.log('일괄 확인 기능');
-    }
-    
-    bulkDelete() {
-        // 구현 예정
-        console.log('일괄 삭제 기능');
+    } catch (error) {
+        alert('오류가 발생했습니다.');
     }
 }
 
-// 전역 인스턴스
-let savedNumbersManager;
-
-document.addEventListener('DOMContentLoaded', function() {
-    savedNumbersManager = new SavedNumbersManager();
-    window.savedNumbersManager = savedNumbersManager;
-});
+function deleteNumber(id) {
+    if (!confirm('이 번호를 삭제하시겠습니까?')) return;
+    
+    const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+    const filtered = savedNumbers.filter(n => n.id !== id);
+    localStorage.setItem('savedNumbers', JSON.stringify(filtered));
+    
+    loadSavedNumbers();
+}
 </script>
 {% endblock %}
