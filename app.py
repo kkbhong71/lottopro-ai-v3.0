@@ -113,10 +113,10 @@ class LottoProAI:
         """로또 당첨번호 데이터 로드"""
         try:
             # 먼저 data 폴더에서 찾기
-            csv_path = self.data_path / 'new_1190.csv'
+            csv_path = self.data_path / 'new_1191.csv'
             if not csv_path.exists():
                 # 루트 폴더에서 찾기
-                csv_path = Path('new_1190.csv')
+                csv_path = Path('new_1191.csv')
             
             self.lotto_df = pd.read_csv(csv_path)
             
@@ -128,7 +128,7 @@ class LottoProAI:
                 logger.warning(f"Column names may not match expected format: {list(self.lotto_df.columns)}")
                 
         except FileNotFoundError:
-            logger.error("Lottery data file not found (new_1190.csv)")
+            logger.error("Lottery data file not found (new_1191.csv)")
             self.lotto_df = pd.DataFrame()
         except Exception as e:
             logger.error(f"Error loading lottery data: {str(e)}")
