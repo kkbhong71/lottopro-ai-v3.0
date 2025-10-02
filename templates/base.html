@@ -16,7 +16,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <!-- CSS -->
-    <link href="{{ url_for('static', filename='css/style.css') }}?v=3.1" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}?v=3.2" rel="stylesheet">
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -138,19 +138,31 @@
     <div id="toast-container" class="fixed top-20 right-6 z-50 space-y-3"></div>
     
     <!-- JavaScript - 올바른 순서로 로드 -->
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=3.1"></script>
-    <script src="{{ url_for('static', filename='js/github-api.js') }}?v=3.1"></script>
-    <script src="{{ url_for('static', filename='js/prediction.js') }}?v=3.1"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=3.2"></script>
+    <script src="{{ url_for('static', filename='js/github-api.js') }}?v=3.2"></script>
+    <script src="{{ url_for('static', filename='js/prediction.js') }}?v=3.2"></script>
     
     <!-- 페이지별 추가 스크립트 -->
     {% block extra_js %}{% endblock %}
     
-    <!-- 초기화 스크립트 -->
+    <!-- 초기화 스크립트 (모든 스크립트 로드 후 실행) -->
     <script>
-    console.log('📦 Base HTML 로드 완료');
-    console.log('🔧 Main.js:', typeof lottoApp !== 'undefined' ? '✅' : '❌');
-    console.log('🔧 GitHub API:', typeof githubAPIManager !== 'undefined' ? '✅' : '❌');
-    console.log('🔧 Prediction:', typeof predictionManager !== 'undefined' ? '✅' : '❌');
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            const mainStatus = typeof lottoApp !== 'undefined';
+            const githubStatus = typeof githubAPIManager !== 'undefined';
+            const predictionStatus = typeof predictionManager !== 'undefined';
+            
+            if (mainStatus && githubStatus) {
+                console.log('✨ LottoPro-AI v3.0 시스템 준비 완료!');
+                console.log('📊 모듈 상태:', {
+                    'Main App': mainStatus ? '✅' : '❌',
+                    'GitHub API': githubStatus ? '✅' : '❌',
+                    'Prediction': predictionStatus ? '✅' : '❌'
+                });
+            }
+        }, 300);
+    });
     </script>
 </body>
 </html>
