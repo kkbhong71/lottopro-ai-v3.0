@@ -1680,3 +1680,48 @@ body {
         min-height: 56px !important;
     }
 }
+
+/* ===== 모바일 레이아웃 수정 (최종) ===== */
+
+/* 데스크톱에서 모바일 메뉴 완전 숨김 */
+@media (min-width: 768px) {
+    #mobile-menu {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    #mobile-menu-btn {
+        display: none !important;
+    }
+}
+
+/* 모바일 네비게이션 개선 */
+@media (max-width: 767px) {
+    /* 우측 아이콘 영역 가로 배치 강제 */
+    nav .flex.items-center.space-x-3:last-child {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 0.75rem !important;
+    }
+    
+    /* 아이콘 버튼 크기 */
+    .icon-btn {
+        width: 36px !important;
+        height: 36px !important;
+        flex-shrink: 0;
+    }
+    
+    /* 네비게이션 높이 */
+    nav .h-16 {
+        min-height: 56px !important;
+    }
+    
+    /* 로고 텍스트 크기 */
+    nav h1 {
+        font-size: 1rem !important;
+    }
+    
+    nav .text-xs {
+        font-size: 0.625rem !important;
+    }
+}
