@@ -9,7 +9,7 @@ class LottoProApp {
         this.userPredictions = [];
         this.isLoading = false;
         this.algorithms = {};
-        this.mobileMenuOpen = false;  // ✅ 추가
+        this.mobileMenuOpen = false;
         
         this.init();
     }
@@ -25,24 +25,20 @@ class LottoProApp {
         console.log('🚀 LottoPro-AI v3.0 초기화 완료');
     }
     
-    // ===== 이벤트 리스너 설정 =====
     setupEventListeners() {
-        // 테마 토글
         const themeToggle = document.getElementById('theme-toggle');
         if (themeToggle) {
             themeToggle.addEventListener('click', () => this.toggleTheme());
         }
         
-        // 모바일 메뉴 - ✅ 개선된 버전
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
         if (mobileMenuBtn && mobileMenu) {
             mobileMenuBtn.addEventListener('click', (e) => {
-                e.stopPropagation();  // 이벤트 버블링 방지
+                e.stopPropagation();
                 this.toggleMobileMenu();
             });
             
-            // 모바일 메뉴 링크 클릭 시 메뉴 닫기
             const menuLinks = mobileMenu.querySelectorAll('a');
             menuLinks.forEach(link => {
                 link.addEventListener('click', () => {
@@ -51,22 +47,18 @@ class LottoProApp {
             });
         }
         
-        // 플로팅 버튼
         const floatingBtn = document.getElementById('floating-btn');
         if (floatingBtn) {
             floatingBtn.addEventListener('click', () => this.handleFloatingAction());
         }
         
-        // 페이지 가시성 변경 감지
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
                 this.refreshData();
             }
         });
         
-        // 키보드 단축키
         document.addEventListener('keydown', (e) => {
-            // ESC 키로 모바일 메뉴 닫기
             if (e.key === 'Escape' && this.mobileMenuOpen) {
                 this.closeMobileMenu();
             }
@@ -86,7 +78,6 @@ class LottoProApp {
         });
     }
     
-    // ===== 테마 시스템 =====
     setupTheme() {
         document.documentElement.setAttribute('data-theme', this.currentTheme);
         this.updateThemeIcon();
@@ -99,7 +90,6 @@ class LottoProApp {
         this.updateThemeIcon();
         this.showToast('테마가 변경되었습니다', 'success');
         
-        // 부드러운 전환 애니메이션
         document.body.style.transition = 'all 0.3s ease';
         setTimeout(() => {
             document.body.style.transition = '';
@@ -113,14 +103,11 @@ class LottoProApp {
         }
     }
     
-    // ===== 모바일 메뉴 - ✅ 완전히 개선된 버전 =====
     setupMobileMenu() {
-        // 메뉴 외부 클릭 시 닫기
         document.addEventListener('click', (e) => {
             const mobileMenu = document.getElementById('mobile-menu');
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             
-            // 모바일 메뉴가 열려있고, 클릭한 곳이 메뉴나 버튼이 아니라면 닫기
             if (this.mobileMenuOpen && 
                 mobileMenu && 
                 !mobileMenu.contains(e.target) && 
@@ -130,7 +117,6 @@ class LottoProApp {
             }
         });
         
-        // 화면 크기 변경 시 데스크톱 모드면 메뉴 닫기
         window.addEventListener('resize', () => {
             if (window.innerWidth >= 768 && this.mobileMenuOpen) {
                 this.closeMobileMenu();
@@ -149,10 +135,10 @@ class LottoProApp {
     openMobileMenu() {
         const mobileMenu = document.getElementById('mobile-menu');
         if (mobileMenu) {
+            mobileMenu.style.display = 'block';
             mobileMenu.classList.remove('hidden');
             this.mobileMenuOpen = true;
             
-            // 부드러운 애니메이션을 위해 약간의 지연
             setTimeout(() => {
                 mobileMenu.style.opacity = '1';
                 mobileMenu.style.transform = 'translateY(0)';
@@ -166,19 +152,15 @@ class LottoProApp {
             mobileMenu.style.opacity = '0';
             mobileMenu.style.transform = 'translateY(-10px)';
             
-            // 애니메이션 후 hidden 클래스 추가
             setTimeout(() => {
                 mobileMenu.classList.add('hidden');
+                mobileMenu.style.display = 'none';
                 this.mobileMenuOpen = false;
             }, 300);
         }
     }
     
-    // ✅ 기존 animateMenuToggle 함수 삭제 (더 이상 필요 없음)
-    
-    // ===== 토스트 알림 시스템 =====
     setupToastSystem() {
-        // 토스트 컨테이너가 없으면 생성
         if (!document.getElementById('toast-container')) {
             const container = document.createElement('div');
             container.id = 'toast-container';
@@ -205,10 +187,8 @@ class LottoProApp {
         
         container.appendChild(toast);
         
-        // 애니메이션으로 표시
         setTimeout(() => toast.classList.add('show'), 100);
         
-        // 자동 제거
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
@@ -225,7 +205,6 @@ class LottoProApp {
         return icons[type] || icons.info;
     }
     
-    // ===== 로딩 관리 =====
     showLoading(message = 'AI가 번호를 분석중입니다...') {
         this.isLoading = true;
         const overlay = document.getElementById('loading-overlay');
@@ -249,22 +228,18 @@ class LottoProApp {
         }
     }
     
-    // ===== 저장된 번호 관리 (개선) =====
     saveNumbers(numbers, algorithmName = 'AI 예측') {
         console.log('💾 번호 저장 시도:', numbers, algorithmName);
         
         try {
-            // 번호 유효성 검사
             const validation = this.validateLottoNumbers(numbers);
             if (!validation.valid) {
                 this.showToast(validation.message, 'error');
                 return false;
             }
             
-            // 기존 저장된 번호 로드
             const savedNumbers = this.getSavedNumbers();
             
-            // 새 항목 생성
             const newEntry = {
                 id: Date.now(),
                 numbers: Array.isArray(numbers) ? numbers : [],
@@ -274,16 +249,13 @@ class LottoProApp {
                 matches: 0
             };
             
-            // 맨 앞에 추가
             savedNumbers.unshift(newEntry);
             
-            // 저장 (최대 100개까지만 유지)
             const trimmedNumbers = savedNumbers.slice(0, 100);
             localStorage.setItem('savedNumbers', JSON.stringify(trimmedNumbers));
             
             console.log('✅ 저장 완료. 총 개수:', trimmedNumbers.length);
             
-            // 성공 메시지
             this.showToast('번호가 저장되었습니다!', 'success');
             
             return true;
@@ -330,7 +302,6 @@ class LottoProApp {
         }
     }
     
-    // ===== 데이터 관리 =====
     async loadUserData() {
         try {
             const response = await fetch('/api/user-predictions');
@@ -384,14 +355,11 @@ class LottoProApp {
         }, duration / steps);
     }
     
-    // ===== 실시간 업데이트 =====
     startRealTimeUpdates() {
-        // 30초마다 데이터 새로고침
         setInterval(() => {
             this.updateLastUpdateTime();
         }, 30000);
         
-        // 페이지 로드 시 시간 업데이트
         this.updateLastUpdateTime();
     }
     
@@ -414,7 +382,6 @@ class LottoProApp {
         return `${Math.floor(diffInSeconds / 86400)}일 전`;
     }
     
-    // ===== API 통신 =====
     async apiRequest(url, options = {}) {
         try {
             const response = await fetch(url, {
@@ -437,9 +404,7 @@ class LottoProApp {
         }
     }
     
-    // ===== 플로팅 액션 버튼 =====
     handleFloatingAction() {
-        // 현재 페이지에 따라 다른 액션 수행
         const path = window.location.pathname;
         
         switch (path) {
@@ -461,7 +426,6 @@ class LottoProApp {
     }
     
     quickAlgorithmRun() {
-        // 첫 번째 알고리즘 실행 버튼 클릭
         const firstBtn = document.querySelector('[data-algorithm-id]');
         if (firstBtn) {
             firstBtn.click();
@@ -486,7 +450,6 @@ class LottoProApp {
                 block: 'center' 
             });
             
-            // 시각적 강조 효과
             section.style.transition = 'all 0.5s ease';
             section.style.transform = 'scale(1.02)';
             section.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.3)';
@@ -498,7 +461,6 @@ class LottoProApp {
         }
     }
     
-    // ===== 유틸리티 함수 =====
     generateRandomNumbers(count = 6, min = 1, max = 45) {
         const numbers = [];
         while (numbers.length < count) {
@@ -536,7 +498,6 @@ class LottoProApp {
         return { valid: true };
     }
     
-    // ===== 데이터 새로고침 =====
     async refreshData() {
         if (this.isLoading) return;
         
@@ -548,7 +509,6 @@ class LottoProApp {
         }
     }
     
-    // ===== 검색 포커스 =====
     focusSearch() {
         const searchInput = document.querySelector('input[type="search"], input[placeholder*="검색"]');
         if (searchInput) {
@@ -557,7 +517,6 @@ class LottoProApp {
         }
     }
     
-    // ===== 에러 처리 =====
     handleError(error, context = '') {
         console.error(`오류 발생 ${context}:`, error);
         
@@ -578,43 +537,35 @@ class LottoProApp {
         this.showToast(message, 'error');
     }
     
-    // ===== 성능 모니터링 =====
     logPerformance(operation, startTime) {
         const duration = performance.now() - startTime;
         console.log(`⚡ ${operation} 완료: ${duration.toFixed(2)}ms`);
         
-        // 3초 이상 걸리는 작업은 경고
         if (duration > 3000) {
             console.warn(`⚠️ 느린 작업 감지: ${operation} (${duration.toFixed(2)}ms)`);
         }
     }
 }
 
-// ===== 전역 변수 및 초기화 =====
 let lottoApp;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 앱 초기화
     lottoApp = new LottoProApp();
     
-    // 전역 함수로 노출 (템플릿에서 사용)
     window.lottoApp = lottoApp;
     window.showToast = (msg, type, duration) => lottoApp.showToast(msg, type, duration);
     window.showLoading = (msg) => lottoApp.showLoading(msg);
     window.hideLoading = () => lottoApp.hideLoading();
     
-    // 저장 관련 함수 (algorithm.html에서 사용)
     window.saveNumbers = (numbers, algorithmName) => lottoApp.saveNumbers(numbers, algorithmName);
     window.getSavedNumbers = () => lottoApp.getSavedNumbers();
     window.deleteSavedNumber = (id) => lottoApp.deleteSavedNumber(id);
     
-    // PWA 설치 프롬프트
     setupPWAInstallPrompt();
     
     console.log('🎯 LottoPro-AI v3.0 준비 완료!');
 });
 
-// ===== PWA 설치 프롬프트 =====
 function setupPWAInstallPrompt() {
     let deferredPrompt;
     
@@ -622,7 +573,6 @@ function setupPWAInstallPrompt() {
         e.preventDefault();
         deferredPrompt = e;
         
-        // 설치 버튼 표시 (필요시)
         const installBtn = document.getElementById('pwa-install-btn');
         if (installBtn) {
             installBtn.style.display = 'block';
