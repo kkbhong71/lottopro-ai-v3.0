@@ -316,8 +316,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/github-api.js"></script>
-<script src="/static/js/prediction.js"></script>
+<!-- ✅ 중복 제거: base.html에서 이미 로드됨 -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // 알고리즘 미리보기 로드
