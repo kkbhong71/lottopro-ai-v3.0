@@ -185,19 +185,21 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
+            # ✅ 수정: 원본 __import__를 먼저 저장
+            original_import = __builtins__.__import__
+            
             # 제한된 import 함수 정의 (수정됨!)
             def safe_import(name, *args, **kwargs):
                 """보안을 위해 제한된 모듈만 import 허용"""
-                # ✅ 수정: Set에 모든 항목을 올바르게 포함
                 allowed_modules = {
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
                     'pandas', 'numpy', 'pd', 'np',
-                    'warnings'  # 이제 올바르게 Set의 일부
+                    'warnings'
                 }
                 if name in allowed_modules:
-                    return __import__(name, *args, **kwargs)
+                    return original_import(name, *args, **kwargs)  # ✅ 원본 사용
                 raise ImportError(f"Module '{name}' is not allowed for security reasons")
             
             # 안전한 실행 환경 구성
@@ -327,7 +329,7 @@ class LottoProAI:
                 'algorithm': prediction_data['algorithm'],
                 'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
-                'round_predicted': prediction_data.get('round_predicted', 1191),  # 업데이트된 회차
+                'round_predicted': prediction_data.get('round_predicted', 1191),
                 'is_checked': False,
                 'match_result': None,
                 'cached': prediction_data.get('cached', False)
@@ -429,7 +431,7 @@ def index():
     return render_template('index.html', 
                          algorithm_count=algorithm_count,
                          data_count=data_count,
-                         latest_round=1191,  # 업데이트된 회차
+                         latest_round=1191,
                          version="3.0")
 
 @app.route('/algorithms')
@@ -621,7 +623,7 @@ def get_lottery_data():
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
             'total_records': len(lotto_ai.lotto_df),
-            'latest_round': 1191  # 업데이트된 회차
+            'latest_round': 1191
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
@@ -643,7 +645,7 @@ def get_all_algorithm_info():
             'status': 'success',
             'info': unique_algorithms,
             'count': len(unique_algorithms),
-            'latest_round': 1191,  # 업데이트된 회차
+            'latest_round': 1191,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -673,7 +675,7 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
         'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
-        'latest_round': 1191,  # 업데이트된 회차
+        'latest_round': 1191,
         'version': '3.0'
     })
 
@@ -686,7 +688,11 @@ def not_found(error):
             'status': 'error',
             'message': 'API endpoint not found'
         }), 404
-    return render_template('404.html'), 404
+    # 템플릿 파일이 없으면 간단한 JSON 응답
+    try:
+        return render_template('404.html'), 404
+    except:
+        return jsonify({'status': 'error', 'message': 'Page not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
@@ -696,7 +702,11 @@ def internal_error(error):
             'status': 'error',
             'message': 'Internal server error'
         }), 500
-    return render_template('500.html'), 500
+    # 템플릿 파일이 없으면 간단한 JSON 응답
+    try:
+        return render_template('500.html'), 500
+    except:
+        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
 # ===== CORS 설정 =====
 
