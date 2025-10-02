@@ -15,6 +15,7 @@ from functools import wraps
 import importlib.util
 import sys
 from collections import Counter
+import builtins  # ✅ 추가
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
@@ -185,8 +186,8 @@ class LottoProAI:
                 if pattern in code_content:
                     logger.warning(f"Potentially dangerous pattern found: {pattern}")
             
-            # ✅ 수정: 원본 __import__를 먼저 저장
-            original_import = __builtins__.__import__
+            # ✅ 수정: builtins 모듈에서 원본 __import__ 가져오기
+            original_import = builtins.__import__
             
             # 제한된 import 함수 정의 (수정됨!)
             def safe_import(name, *args, **kwargs):
@@ -199,7 +200,7 @@ class LottoProAI:
                     'warnings'
                 }
                 if name in allowed_modules:
-                    return original_import(name, *args, **kwargs)  # ✅ 원본 사용
+                    return original_import(name, *args, **kwargs)
                 raise ImportError(f"Module '{name}' is not allowed for security reasons")
             
             # 안전한 실행 환경 구성
@@ -216,6 +217,8 @@ class LottoProAI:
                     'any': any, 'all': all,
                     'isinstance': isinstance,
                     '__import__': safe_import,
+                    '__build_class__': builtins.__build_class__,  # ✅ 추가
+                    '__name__': '__main__',  # ✅ 추가
                     'print': print,
                     'globals': lambda: safe_globals  # globals() 지원
                 },
@@ -226,7 +229,8 @@ class LottoProAI:
                 'data_path': str(self.data_path),
                 'datetime': datetime,
                 'random': np.random,
-                'user_numbers': user_numbers or []
+                'user_numbers': user_numbers or [],
+                '__name__': '__main__',  # ✅ 추가
             }
             
             # 코드 실행 (에러 핸들링 강화)
@@ -688,7 +692,6 @@ def not_found(error):
             'status': 'error',
             'message': 'API endpoint not found'
         }), 404
-    # 템플릿 파일이 없으면 간단한 JSON 응답
     try:
         return render_template('404.html'), 404
     except:
@@ -702,7 +705,6 @@ def internal_error(error):
             'status': 'error',
             'message': 'Internal server error'
         }), 500
-    # 템플릿 파일이 없으면 간단한 JSON 응답
     try:
         return render_template('500.html'), 500
     except:
