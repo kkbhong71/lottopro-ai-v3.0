@@ -113,25 +113,70 @@ class LottoProAI:
             }
             
     def load_lotto_data(self):
-        """로또 당첨번호 데이터 로드"""
+        """로또 당첨번호 데이터 로드 - 개선된 버전"""
         try:
-            csv_path = self.data_path / 'new_1191.csv'
-            if not csv_path.exists():
-                csv_path = Path('new_1191.csv')
+            # 여러 가능한 경로 시도
+            possible_paths = [
+                self.data_path / 'new_1191.csv',           # data/new_1191.csv
+                Path('data/new_1191.csv'),                 # 상대 경로
+                Path('new_1191.csv'),                      # 루트
+                Path('/opt/render/project/src/data/new_1191.csv'),  # Render 절대 경로
+                Path('/opt/render/project/src/new_1191.csv')        # Render 루트
+            ]
             
+            csv_path = None
+            logger.info("🔍 CSV 파일 검색 시작...")
+            
+            for path in possible_paths:
+                logger.info(f"  시도: {path}")
+                if path.exists():
+                    csv_path = path
+                    logger.info(f"✅ CSV 파일 발견: {path}")
+                    break
+            
+            if csv_path is None:
+                logger.error(f"❌ CSV 파일을 찾을 수 없음. 시도한 경로:")
+                for path in possible_paths:
+                    logger.error(f"  - {path}")
+                raise FileNotFoundError("new_1191.csv 파일을 찾을 수 없습니다")
+            
+            # CSV 파일 로드
             self.lotto_df = pd.read_csv(csv_path)
             
+            # 데이터 검증
             expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
-            if list(self.lotto_df.columns) == expected_columns:
-                logger.info(f"Loaded {len(self.lotto_df)} lottery records (최신 회차: 1191)")
+            actual_columns = list(self.lotto_df.columns)
+            
+            logger.info(f"📊 데이터 로드 완료:")
+            logger.info(f"  - 총 회차: {len(self.lotto_df)}")
+            logger.info(f"  - 컬럼: {actual_columns}")
+            
+            if actual_columns == expected_columns:
+                logger.info(f"✅ 컬럼 형식 정상 (최신 회차: 1191)")
             else:
-                logger.warning(f"Column names may not match expected format: {list(self.lotto_df.columns)}")
+                logger.warning(f"⚠️ 컬럼명이 예상과 다름:")
+                logger.warning(f"  예상: {expected_columns}")
+                logger.warning(f"  실제: {actual_columns}")
+            
+            # 첫 번째와 마지막 행 샘플 출력
+            if not self.lotto_df.empty:
+                logger.info(f"🎲 첫 번째 회차: {self.lotto_df.iloc[0].to_dict()}")
+                logger.info(f"🎲 마지막 회차: {self.lotto_df.iloc[-1].to_dict()}")
+            
+            # 데이터 무결성 검증
+            if len(self.lotto_df) < 100:
+                logger.warning(f"⚠️ 데이터가 부족할 수 있음: {len(self.lotto_df)}회차")
+            
+            logger.info(f"✅ 로또 데이터 로드 성공 - {len(self.lotto_df)}회차")
                 
-        except FileNotFoundError:
-            logger.error("Lottery data file not found (new_1191.csv)")
+        except FileNotFoundError as e:
+            logger.error(f"❌ CSV 파일 없음: {str(e)}")
+            self.lotto_df = pd.DataFrame()
+        except pd.errors.EmptyDataError:
+            logger.error("❌ CSV 파일이 비어있음")
             self.lotto_df = pd.DataFrame()
         except Exception as e:
-            logger.error(f"Error loading lottery data: {str(e)}")
+            logger.error(f"❌ 데이터 로드 실패: {str(e)}", exc_info=True)
             self.lotto_df = pd.DataFrame()
     
     def check_dangerous_code(self, code_content):
@@ -168,6 +213,11 @@ class LottoProAI:
         try:
             if algorithm_id not in self.algorithm_info.get('algorithms', {}):
                 raise Exception(f"Algorithm '{algorithm_id}' not found")
+            
+            # 데이터 로드 확인
+            if self.lotto_df.empty:
+                logger.error("❌ 로또 데이터가 비어있음 - 알고리즘 실행 불가")
+                raise Exception("로또 데이터를 로드할 수 없습니다")
             
             algorithm_info = self.algorithm_info['algorithms'][algorithm_id]
             
@@ -251,7 +301,7 @@ class LottoProAI:
                 'pd': pd,
                 'np': np,
                 'Counter': Counter,
-                'lotto_data': self.lotto_df.copy(),
+                'lotto_data': self.lotto_df.copy(),  # ← CSV 데이터를 알고리즘에 전달
                 'data_path': str(self.data_path),
                 'datetime': datetime,
                 'random': np.random,
@@ -259,7 +309,7 @@ class LottoProAI:
                 '__name__': '__main__',
             }
             
-            logger.info(f"Executing algorithm: {algorithm_id}")
+            logger.info(f"Executing algorithm: {algorithm_id} (데이터: {len(self.lotto_df)}회차)")
             try:
                 exec(code_content, safe_globals)
             except SyntaxError as e:
