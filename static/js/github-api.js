@@ -570,3 +570,64 @@ async function loadAlgorithmPreview() {
 window.loadAlgorithmPreview = loadAlgorithmPreview;
 
 console.log('📦 github-api.js 로드 완료');
+
+// ===== 번호 저장 함수 (localStorage) =====
+
+/**
+ * 예측된 번호를 localStorage에 저장
+ * @param {Array} numbers - 6개의 로또 번호
+ * @param {String} algorithmName - 알고리즘 이름
+ */
+window.saveNumbers = function(numbers, algorithmName) {
+    console.log('💾 번호 저장:', numbers, algorithmName);
+    
+    try {
+        // 유효성 검사
+        if (!Array.isArray(numbers) || numbers.length !== 6) {
+            throw new Error('잘못된 번호 형식');
+        }
+        
+        if (!numbers.every(n => Number.isInteger(n) && n >= 1 && n <= 45)) {
+            throw new Error('번호는 1-45 사이의 정수여야 합니다');
+        }
+        
+        // 기존 데이터 로드
+        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+        
+        // 새 항목 생성 (saved_numbers.html 형식)
+        const newEntry = {
+            id: Date.now(),
+            numbers: numbers,
+            timestamp: new Date().toISOString(),
+            algorithm: algorithmName || 'AI 예측',
+            checked: false,
+            matches: 0
+        };
+        
+        // 맨 앞에 추가 (최신순)
+        savedNumbers.unshift(newEntry);
+        
+        // 최대 100개까지만 유지
+        const trimmed = savedNumbers.slice(0, 100);
+        
+        // 저장
+        localStorage.setItem('savedNumbers', JSON.stringify(trimmed));
+        
+        console.log('✅ 저장 완료. 총', trimmed.length, '개');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ 저장 실패:', error);
+        
+        if (window.showToast) {
+            window.showToast('번호 저장에 실패했습니다: ' + error.message, 'error');
+        } else {
+            alert('저장 실패: ' + error.message);
+        }
+        
+        return false;
+    }
+};
+
+console.log('💾 saveNumbers 함수 등록 완료');
