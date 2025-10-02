@@ -508,24 +508,42 @@ class PredictionManager {
             return;
         }
         
+        // ✅ 번호 정규화 - 배열로 확실히 변환
+        const normalizedNumbers = this.normalizeNumbers(this.lastPrediction.numbers);
+        
+        console.log('💾 예측 저장 시도:', {
+            original: this.lastPrediction.numbers,
+            normalized: normalizedNumbers,
+            algorithm: this.lastPrediction.algorithm || 'manual',
+            method: this.lastPrediction.method
+        });
+        
         try {
+            // ✅ 서버 전송 데이터 구성
+            const payload = {
+                numbers: normalizedNumbers, // 반드시 배열
+                algorithm: this.lastPrediction.algorithm || 'manual',
+                algorithm_name: this.lastPrediction.algorithm_name || 'AI 예측',
+                timestamp: this.lastPrediction.timestamp,
+                method: this.lastPrediction.method,
+                preferences: this.lastPrediction.preferences || [],
+                round_predicted: 1191
+            };
+            
+            console.log('📤 서버 전송 데이터:', JSON.stringify(payload, null, 2));
+            
             const response = await fetch('/api/save-prediction', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    numbers: this.lastPrediction.numbers,
-                    algorithm: this.lastPrediction.algorithm || 'manual',
-                    timestamp: this.lastPrediction.timestamp,
-                    method: this.lastPrediction.method,
-                    preferences: this.lastPrediction.preferences
-                })
+                body: JSON.stringify(payload)
             });
             
             const result = await response.json();
             
             if (result.status === 'success') {
+                console.log('✅ 예측 저장 완료:', result.prediction_id);
                 window.showToast('예측이 저장되었습니다!', 'success');
                 
                 // 통계 업데이트
@@ -542,13 +560,45 @@ class PredictionManager {
                 }
                 
             } else {
-                window.showToast('저장 중 오류가 발생했습니다', 'error');
+                throw new Error(result.message || '저장 실패');
             }
             
         } catch (error) {
-            console.error('예측 저장 실패:', error);
+            console.error('❌ 예측 저장 실패:', error);
             window.showToast('네트워크 오류가 발생했습니다', 'error');
         }
+    }
+    
+    /**
+     * ✅ 번호 정규화 - 다양한 입력을 배열로 변환
+     */
+    normalizeNumbers(numbers) {
+        // 이미 배열이면 그대로
+        if (Array.isArray(numbers)) {
+            return numbers.map(n => parseInt(n)).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+        }
+        
+        // 문자열인 경우
+        if (typeof numbers === 'string') {
+            // 쉼표 구분
+            if (numbers.includes(',')) {
+                return numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+            }
+            // 공백 구분
+            if (numbers.includes(' ')) {
+                return numbers.split(/\s+/).map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+            }
+        }
+        
+        // 숫자인 경우
+        if (typeof numbers === 'number') {
+            if (numbers >= 1 && numbers <= 45) {
+                return [numbers];
+            }
+        }
+        
+        console.warn('⚠️ 번호 정규화 실패, 빈 배열 반환:', numbers);
+        return [];
     }
     
     // ===== 새 예측 =====
