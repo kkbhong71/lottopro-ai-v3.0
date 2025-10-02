@@ -1657,3 +1657,26 @@ body {
         gap: 0.5rem;
     }
 }
+
+/* 모바일 네비게이션 간격 개선 */
+@media (max-width: 767px) {
+    nav .flex.items-center.space-x-3 {
+        gap: 0.5rem;
+    }
+    
+    /* 아이콘 버튼 크기 축소 */
+    .icon-btn {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    
+    /* 로고 텍스트 크기 조정 */
+    nav h1 {
+        font-size: 1.125rem !important;
+    }
+    
+    /* 네비게이션 높이 고정 */
+    nav .h-16 {
+        min-height: 56px !important;
+    }
+}
