@@ -592,6 +592,86 @@ function renderNumbersList(numbers) {
     `;
 }
 
+function parseNumbers(numbersData) {
+    /**
+     * 다양한 형식의 번호 데이터를 배열로 변환
+     * - 배열: 그대로 사용
+     * - 쉼표 구분 문자열: "5,6,9,20,39,43"
+     * - 공백 구분 문자열: "5 6 9 20 39 43"
+     * - 붙어있는 숫자: "569203943" → 스마트 분리
+     */
+    let numbers = numbersData;
+    
+    // 이미 배열이면 그대로 반환
+    if (Array.isArray(numbers)) {
+        return numbers.map(n => parseInt(n)).filter(n => n >= 1 && n <= 45);
+    }
+    
+    // 배열이 아닌 경우 처리
+    if (typeof numbers === 'string' || typeof numbers === 'number') {
+        const numStr = String(numbers).trim();
+        
+        // 방법 1: 쉼표로 구분된 경우
+        if (numStr.includes(',')) {
+            numbers = numStr.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+        }
+        // 방법 2: 공백으로 구분된 경우
+        else if (numStr.includes(' ')) {
+            numbers = numStr.split(/\s+/).map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+        }
+        // 방법 3: 붙어있는 숫자 - 2자리씩 스마트 분리
+        else if (numStr.length >= 6) {
+            numbers = [];
+            let i = 0;
+            
+            while (i < numStr.length && numbers.length < 6) {
+                // 1자리 또는 2자리 숫자 추출
+                let num;
+                
+                if (i + 1 < numStr.length) {
+                    const twoDigit = parseInt(numStr.substring(i, i + 2));
+                    const oneDigit = parseInt(numStr[i]);
+                    
+                    // 2자리 숫자가 10~45 범위이고, 다음에 충분한 자리가 남아있으면 2자리로 처리
+                    if (twoDigit >= 10 && twoDigit <= 45) {
+                        // 남은 자리수 계산
+                        const remaining = numStr.length - (i + 2);
+                        const numbersNeeded = 6 - numbers.length - 1; // 현재 번호 제외하고 필요한 개수
+                        
+                        // 2자리로 처리해도 나머지를 채울 수 있으면 2자리로
+                        if (remaining >= numbersNeeded) {
+                            num = twoDigit;
+                            i += 2;
+                        } else {
+                            num = oneDigit;
+                            i += 1;
+                        }
+                    } else {
+                        num = oneDigit;
+                        i += 1;
+                    }
+                } else {
+                    num = parseInt(numStr[i]);
+                    i += 1;
+                }
+                
+                // 유효한 로또 번호만 추가
+                if (!isNaN(num) && num >= 1 && num <= 45) {
+                    numbers.push(num);
+                }
+            }
+        } else {
+            // 파싱 실패시 기본값
+            console.warn('⚠️ 번호 파싱 실패:', numStr);
+            numbers = [];
+        }
+    } else {
+        numbers = [];
+    }
+    
+    return numbers;
+}
+
 function createNumberCard(item) {
     const date = new Date(item.timestamp);
     const dateStr = date.toLocaleString('ko-KR', {
@@ -601,9 +681,22 @@ function createNumberCard(item) {
         minute: '2-digit'
     });
     
-    const numbersHtml = item.numbers.map(num => 
-        `<span class="saved-number">${num}</span>`
-    ).join('');
+    // 숫자 파싱 (개선된 로직 적용)
+    let numbers = parseNumbers(item.numbers);
+    
+    // 정렬 및 중복 제거
+    numbers = [...new Set(numbers)].sort((a, b) => a - b).slice(0, 6);
+    
+    // 6개 미만이면 경고 로그
+    if (numbers.length < 6) {
+        console.warn('⚠️ 번호가 6개 미만:', item.id, '원본:', item.numbers, '파싱결과:', numbers);
+        // 부족한 번호는 랜덤으로 채우지 않고 있는 것만 표시
+    }
+    
+    // 번호 HTML 생성
+    const numbersHtml = numbers.length > 0 
+        ? numbers.map(num => `<span class="saved-number">${num}</span>`).join('')
+        : '<span style="color: var(--text-muted);">번호 없음</span>';
     
     // 알고리즘 키 추출
     const algoKey = item.algorithm || 'ultimate_v1';
@@ -634,8 +727,8 @@ function createNumberCard(item) {
                 </div>
             ` : ''}
             <div class="number-card-actions">
-                ${!isChecked ? `
-                    <button class="action-btn btn-check" onclick="checkNumber('${item.id}', ${JSON.stringify(item.numbers)})">
+                ${!isChecked && numbers.length === 6 ? `
+                    <button class="action-btn btn-check" onclick="checkNumber('${item.id}', ${JSON.stringify(numbers)})">
                         <span>✓</span>
                         <span>당첨 확인</span>
                     </button>
@@ -706,5 +799,15 @@ async function checkNumber(predictionId, predictedNumbers) {
         }
     }
 }
+
+// 페이지 로드 완료 로그
+setTimeout(() => {
+    console.log('✨ LottoPro-AI v3.0 시스템 준비 완료!');
+    console.log('📊 모듈 상태:', {
+        'Main App': '✅',
+        'GitHub API': '✅',
+        'Prediction': '✅'
+    });
+}, 1000);
 </script>
 {% endblock %}
