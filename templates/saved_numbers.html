@@ -74,9 +74,9 @@
         </div>
 
         <div class="control-group">
-            <button id="clear-all-btn" class="control-button" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
-                <span class="btn-icon">🗑️</span>
-                <span class="btn-text">전체 삭제</span>
+            <button id="refresh-btn" class="control-button" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">새로고침</span>
             </button>
         </div>
     </div>
@@ -361,6 +361,13 @@
     margin-bottom: 2rem;
 }
 
+/* 로딩 상태 */
+.loading-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
 /* 모바일 최적화 */
 @media (max-width: 768px) {
     .stats-grid {
@@ -402,78 +409,99 @@ const ALGORITHM_COLORS = {
     'ultimate_v6': { class: 'ultimate-v6', badge: 'ultimate' }
 };
 
+let currentPredictions = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('💾 저장된 번호 페이지 초기화');
     loadSavedNumbers();
 
     // 이벤트 리스너
-    document.getElementById('sort-saved')?.addEventListener('change', loadSavedNumbers);
-    document.getElementById('filter-saved')?.addEventListener('change', loadSavedNumbers);
-    document.getElementById('group-by')?.addEventListener('change', loadSavedNumbers);
+    document.getElementById('sort-saved')?.addEventListener('change', renderCurrentData);
+    document.getElementById('filter-saved')?.addEventListener('change', renderCurrentData);
+    document.getElementById('group-by')?.addEventListener('change', renderCurrentData);
     
-    document.getElementById('clear-all-btn')?.addEventListener('click', function() {
-        if (confirm('정말로 모든 저장된 번호를 삭제하시겠습니까?')) {
-            localStorage.removeItem('savedNumbers');
-            loadSavedNumbers();
-            if (window.showToast) {
-                window.showToast('모든 번호가 삭제되었습니다', 'success');
-            }
-        }
+    document.getElementById('refresh-btn')?.addEventListener('click', function() {
+        loadSavedNumbers(true);
     });
 });
 
-function loadSavedNumbers() {
+async function loadSavedNumbers(forceRefresh = false) {
+    const container = document.getElementById('saved-numbers-list');
+    
+    if (forceRefresh) {
+        container.innerHTML = '<div class="loading-state">🔄 데이터를 불러오는 중...</div>';
+    }
+    
     try {
-        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
-        console.log('저장된 번호 로드:', savedNumbers.length);
+        const response = await fetch('/api/user-predictions');
+        const data = await response.json();
         
-        updateStats(savedNumbers);
+        currentPredictions = data.predictions || [];
+        console.log('📊 서버에서 로드:', currentPredictions.length, '개');
         
-        const sortBy = document.getElementById('sort-saved')?.value || 'newest';
-        const filterBy = document.getElementById('filter-saved')?.value || 'all';
-        const groupBy = document.getElementById('group-by')?.value || 'date';
+        updateStats(data.stats || {});
+        renderCurrentData();
         
-        let filtered = [...savedNumbers];
-        
-        // 필터 적용
-        if (filterBy === 'checked') {
-            filtered = filtered.filter(n => n.checked);
-        } else if (filterBy === 'unchecked') {
-            filtered = filtered.filter(n => !n.checked);
-        }
-        
-        // 정렬 적용
-        if (sortBy === 'newest') {
-            filtered.sort((a, b) => b.id - a.id);
-        } else if (sortBy === 'oldest') {
-            filtered.sort((a, b) => a.id - b.id);
-        }
-        
-        // 그룹화 및 렌더링
-        if (groupBy === 'date') {
-            renderByDateGroups(filtered);
-        } else if (groupBy === 'algorithm') {
-            renderByAlgorithmGroups(filtered);
-        } else {
-            renderNumbersList(filtered);
+        if (forceRefresh && window.showToast) {
+            window.showToast('데이터를 새로고침했습니다', 'success');
         }
         
     } catch (error) {
-        console.error('번호 로드 실패:', error);
+        console.error('❌ 번호 로드 실패:', error);
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h3>데이터를 불러올 수 없습니다</h3>
+                <p>서버 연결을 확인해주세요</p>
+                <button onclick="loadSavedNumbers(true)" class="btn-primary">
+                    <span>🔄</span>
+                    <span>다시 시도</span>
+                </button>
+            </div>
+        `;
     }
 }
 
-function updateStats(savedNumbers) {
-    const total = savedNumbers.length;
-    const checked = savedNumbers.filter(n => n.checked).length;
-    const totalMatches = savedNumbers.reduce((sum, n) => sum + (n.matches || 0), 0);
-    const bestMatch = Math.max(...savedNumbers.map(n => n.matches || 0), 0);
-    const accuracy = total > 0 ? ((totalMatches / (total * 6)) * 100).toFixed(1) : 0;
+function updateStats(stats) {
+    document.getElementById('total-predictions').textContent = stats.total_predictions || 0;
+    document.getElementById('total-matches').textContent = stats.total_matches || 0;
+    document.getElementById('best-match').textContent = stats.best_match || 0;
     
-    document.getElementById('total-predictions').textContent = total;
-    document.getElementById('total-matches').textContent = totalMatches;
-    document.getElementById('best-match').textContent = bestMatch;
+    const accuracy = stats.total_predictions > 0 
+        ? ((stats.total_matches / (stats.total_predictions * 6)) * 100).toFixed(1) 
+        : 0;
     document.getElementById('accuracy-rate').textContent = accuracy + '%';
+}
+
+function renderCurrentData() {
+    const sortBy = document.getElementById('sort-saved')?.value || 'newest';
+    const filterBy = document.getElementById('filter-saved')?.value || 'all';
+    const groupBy = document.getElementById('group-by')?.value || 'date';
+    
+    let filtered = [...currentPredictions];
+    
+    // 필터 적용
+    if (filterBy === 'checked') {
+        filtered = filtered.filter(n => n.is_checked);
+    } else if (filterBy === 'unchecked') {
+        filtered = filtered.filter(n => !n.is_checked);
+    }
+    
+    // 정렬 적용
+    if (sortBy === 'newest') {
+        filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    } else if (sortBy === 'oldest') {
+        filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    }
+    
+    // 그룹화 및 렌더링
+    if (groupBy === 'date') {
+        renderByDateGroups(filtered);
+    } else if (groupBy === 'algorithm') {
+        renderByAlgorithmGroups(filtered);
+    } else {
+        renderNumbersList(filtered);
+    }
 }
 
 function getRelativeDate(date) {
@@ -530,7 +558,7 @@ function renderByAlgorithmGroups(numbers) {
     // 알고리즘별 그룹화
     const groups = {};
     numbers.forEach(item => {
-        const algo = item.algorithm || 'Unknown';
+        const algo = item.algorithm_name || item.algorithm || 'Unknown';
         if (!groups[algo]) groups[algo] = [];
         groups[algo].push(item);
     });
@@ -578,59 +606,43 @@ function createNumberCard(item) {
     ).join('');
     
     // 알고리즘 키 추출
-    const algoKey = extractAlgorithmKey(item.algorithm);
+    const algoKey = item.algorithm || 'ultimate_v1';
     const algoColor = ALGORITHM_COLORS[algoKey] || { class: 'ultimate', badge: 'ultimate' };
+    
+    // match_result가 있으면 확인됨
+    const isChecked = item.is_checked && item.match_result;
+    const matches = isChecked ? item.match_result.matches : 0;
     
     return `
         <div class="number-card algo-${algoColor.class}">
             <div class="number-card-header">
                 <div>
-                    <span class="algorithm-badge ${algoColor.badge}">${item.algorithm || 'AI 예측'}</span>
+                    <span class="algorithm-badge ${algoColor.badge}">${item.algorithm_name || 'AI 예측'}</span>
                     <div class="number-card-date">🕒 ${dateStr}</div>
                 </div>
             </div>
             <div class="number-card-numbers">
                 ${numbersHtml}
             </div>
-            ${item.checked ? `
+            ${isChecked ? `
                 <div class="check-result">
                     <div class="check-result-header">
                         <span class="check-result-title">✓ 확인 완료</span>
-                        <span class="check-result-matches">${item.matches || 0}개 일치</span>
+                        <span class="check-result-matches">${matches}개 일치</span>
                     </div>
                     <p class="check-result-desc">당첨번호와 비교 완료되었습니다</p>
                 </div>
             ` : ''}
             <div class="number-card-actions">
-                ${!item.checked ? `
-                    <button class="action-btn btn-check" onclick="checkNumber(${item.id})">
+                ${!isChecked ? `
+                    <button class="action-btn btn-check" onclick="checkNumber('${item.id}', ${JSON.stringify(item.numbers)})">
                         <span>✓</span>
                         <span>당첨 확인</span>
                     </button>
                 ` : ''}
-                <button class="action-btn btn-delete" onclick="deleteNumber(${item.id})">
-                    <span>🗑️</span>
-                    <span>삭제</span>
-                </button>
             </div>
         </div>
     `;
-}
-
-function extractAlgorithmKey(algorithmName) {
-    if (!algorithmName) return 'ultimate_v1';
-    const lower = algorithmName.toLowerCase();
-    
-    if (lower.includes('strongest')) return 'strongest_v3';
-    if (lower.includes('super')) return 'super_v1';
-    if (lower.includes('ultimate 1') || lower.includes('v1')) return 'ultimate_v1';
-    if (lower.includes('ultimate 2') || lower.includes('v2')) return 'ultimate_v2';
-    if (lower.includes('ultimate 3') || lower.includes('v3')) return 'ultimate_v3';
-    if (lower.includes('ultimate 4') || lower.includes('v4')) return 'ultimate_v4';
-    if (lower.includes('ultimate 5') || lower.includes('v5')) return 'ultimate_v5';
-    if (lower.includes('ultimate 6') || lower.includes('v6')) return 'ultimate_v6';
-    
-    return 'ultimate_v1';
 }
 
 function showEmptyState(container) {
@@ -647,7 +659,7 @@ function showEmptyState(container) {
     `;
 }
 
-function checkNumber(id) {
+async function checkNumber(predictionId, predictedNumbers) {
     const winningNumbers = prompt('당첨번호 6개를 쉼표로 구분하여 입력하세요.\n예: 3,12,23,31,38,42');
     if (!winningNumbers) return;
     
@@ -658,41 +670,41 @@ function checkNumber(id) {
             return;
         }
         
-        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
-        const item = savedNumbers.find(n => n.id === id);
-        if (!item) return;
+        // 백엔드 API 호출
+        const response = await fetch('/api/compare-numbers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prediction_id: predictionId,
+                winning_numbers: numbers
+            })
+        });
         
-        const matches = item.numbers.filter(n => numbers.includes(n)).length;
-        item.checked = true;
-        item.matches = matches;
+        const result = await response.json();
         
-        localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
-        
-        if (window.showToast) {
-            window.showToast(`${matches}개 번호가 일치합니다!`, 'success');
+        if (result.status === 'success') {
+            if (window.showToast) {
+                window.showToast(`${result.matches}개 번호가 일치합니다!`, 'success');
+            } else {
+                alert(`${result.matches}개 번호가 일치합니다!`);
+            }
+            
+            // 데이터 새로고침
+            await loadSavedNumbers();
         } else {
-            alert(`${matches}개 번호가 일치합니다!`);
+            throw new Error(result.message || '비교 실패');
         }
         
-        loadSavedNumbers();
-        
     } catch (error) {
-        alert('오류가 발생했습니다.');
+        console.error('❌ 당첨 확인 실패:', error);
+        if (window.showToast) {
+            window.showToast('당첨 확인에 실패했습니다', 'error');
+        } else {
+            alert('오류가 발생했습니다.');
+        }
     }
-}
-
-function deleteNumber(id) {
-    if (!confirm('이 번호를 삭제하시겠습니까?')) return;
-    
-    const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
-    const filtered = savedNumbers.filter(n => n.id !== id);
-    localStorage.setItem('savedNumbers', JSON.stringify(filtered));
-    
-    if (window.showToast) {
-        window.showToast('번호가 삭제되었습니다', 'success');
-    }
-    
-    loadSavedNumbers();
 }
 </script>
 {% endblock %}
