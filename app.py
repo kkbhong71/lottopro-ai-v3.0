@@ -1,726 +1,629 @@
-from flask import Flask, render_template, request, jsonify, session
-from datetime import datetime, timedelta
-import json
-import os
-import pandas as pd
-import numpy as np
-import requests
-from pathlib import Path
-import tempfile
-import logging
-import uuid
-import hashlib
-import time
-from functools import wraps
-import importlib.util
-import sys
-from collections import Counter
-import builtins
-import re
+/**
+ * LottoPro-AI v3.0 - 메인 JavaScript 모듈
+ * 개선된 버전 - 백엔드 API 통합
+ */
 
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
-app.config['JSON_AS_ASCII'] = False
-
-# 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# GitHub 설정
-GITHUB_REPO = os.environ.get('GITHUB_REPO', 'kkbhong71/lottopro-ai-v3.0')
-GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
-GITHUB_API_BASE = f'https://api.github.com/repos/{GITHUB_REPO}'
-
-# 알고리즘 실행 제한
-ALGORITHM_CACHE = {}
-LAST_EXECUTION = {}
-EXECUTION_LIMIT = 60
-
-def rate_limit(limit_seconds=60):
-    """API 호출 제한 데코레이터"""
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            key = f"{request.remote_addr}_{func.__name__}"
-            now = time.time()
-            
-            if key in LAST_EXECUTION:
-                if now - LAST_EXECUTION[key] < limit_seconds:
-                    return jsonify({
-                        'status': 'error', 
-                        'message': f'{limit_seconds}초 후에 다시 시도해주세요.'
-                    }), 429
-            
-            LAST_EXECUTION[key] = now
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-class LottoProAI:
-    def __init__(self):
-        self.data_path = Path('data')
-        self.data_path.mkdir(exist_ok=True)
+class LottoProApp {
+    constructor() {
+        this.currentTheme = localStorage.getItem('theme') || 'dark';
+        this.userPredictions = [];
+        this.isLoading = false;
+        this.algorithms = {};
+        this.mobileMenuOpen = false;
         
-        self.user_data_path = self.data_path / 'user_predictions.json'
-        self.algorithm_info_path = Path('algorithms/algorithm_info.json')
+        this.init();
+    }
+    
+    init() {
+        this.setupEventListeners();
+        this.setupTheme();
+        this.setupMobileMenu();
+        this.setupToastSystem();
+        this.loadUserData();
+        this.startRealTimeUpdates();
         
-        self.cache_path = self.data_path / 'cache'
-        self.cache_path.mkdir(exist_ok=True)
-        
-        self.load_algorithm_info()
-        self.load_lotto_data()
-        
-    def load_algorithm_info(self):
-        """알고리즘 정보 로드"""
-        try:
-            with open(self.algorithm_info_path, 'r', encoding='utf-8') as f:
-                self.algorithm_info = json.load(f)
-            
-            if 'algorithms' in self.algorithm_info:
-                logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
-            else:
-                logger.warning("Converting old algorithm info format to new format")
-                algorithms_dict = {}
-                for key, value in self.algorithm_info.items():
-                    if isinstance(value, dict) and 'name' in value:
-                        algorithms_dict[key] = value
-                
-                self.algorithm_info = {
-                    "version": "3.0",
-                    "algorithms": algorithms_dict,
-                    "categories": {},
-                    "difficulty_levels": {}
-                }
-                logger.info(f"Converted {len(algorithms_dict)} algorithms")
-                
-        except FileNotFoundError:
-            logger.warning("Algorithm info file not found, using default")
-            self.algorithm_info = {
-                "version": "3.0",
-                "algorithms": {},
-                "categories": {},
-                "difficulty_levels": {}
-            }
-            
-    def load_lotto_data(self):
-        """로또 당첨번호 데이터 로드"""
-        try:
-            csv_path = self.data_path / 'new_1191.csv'
-            if not csv_path.exists():
-                csv_path = Path('new_1191.csv')
-            
-            self.lotto_df = pd.read_csv(csv_path)
-            
-            expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
-            if list(self.lotto_df.columns) == expected_columns:
-                logger.info(f"Loaded {len(self.lotto_df)} lottery records (최신 회차: 1191)")
-            else:
-                logger.warning(f"Column names may not match expected format: {list(self.lotto_df.columns)}")
-                
-        except FileNotFoundError:
-            logger.error("Lottery data file not found (new_1191.csv)")
-            self.lotto_df = pd.DataFrame()
-        except Exception as e:
-            logger.error(f"Error loading lottery data: {str(e)}")
-            self.lotto_df = pd.DataFrame()
+        console.log('🚀 LottoPro-AI v3.0 초기화 완료');
+    }
     
-    def check_dangerous_code(self, code_content):
-        """개선된 보안 검사 - 정규표현식 사용"""
-        dangerous_patterns = [
-            (r'\brm\s+-[rf]', 'Shell command: rm -rf (파일 삭제)'),
-            (r'\bos\.system\s*\(', 'os.system() 호출'),
-            (r'\bos\.remove\s*\(', 'os.remove() 호출'),
-            (r'\bos\.rmdir\s*\(', 'os.rmdir() 호출'),
-            (r'\bos\.unlink\s*\(', 'os.unlink() 호출'),
-            (r'\bsubprocess\.', 'subprocess 모듈 사용'),
-            (r'\bshutil\.rmtree\s*\(', 'shutil.rmtree() 호출'),
-            (r'\bexec\s*\(', 'exec() 호출'),
-            (r'\beval\s*\(', 'eval() 호출'),
-            (r'\b__import__\s*\(', '동적 import'),
-            (r'\bopen\s*\([^)]*[\'"]w[\'"]', '파일 쓰기 모드'),
-        ]
-        
-        found_issues = []
-        for pattern, description in dangerous_patterns:
-            if re.search(pattern, code_content, re.IGNORECASE):
-                found_issues.append(description)
-                logger.warning(f"⚠️ Potentially dangerous pattern: {description}")
-        
-        return found_issues
-    
-    def get_algorithm_cache_key(self, algorithm_id):
-        """알고리즘 캐시 키 생성"""
-        data_hash = hashlib.md5(str(len(self.lotto_df)).encode()).hexdigest()[:8]
-        return f"{algorithm_id}_{data_hash}"
-    
-    def execute_github_algorithm(self, algorithm_id, user_numbers=None):
-        """GitHub에서 알고리즘 코드를 안전하게 실행"""
-        try:
-            if algorithm_id not in self.algorithm_info.get('algorithms', {}):
-                raise Exception(f"Algorithm '{algorithm_id}' not found")
-            
-            algorithm_info = self.algorithm_info['algorithms'][algorithm_id]
-            
-            if not user_numbers:
-                cache_key = self.get_algorithm_cache_key(algorithm_id)
-                cache_file = self.cache_path / f"{cache_key}.json"
-                
-                if cache_file.exists():
-                    cache_time = datetime.fromtimestamp(cache_file.stat().st_mtime)
-                    if datetime.now() - cache_time < timedelta(hours=1):
-                        with open(cache_file, 'r', encoding='utf-8') as f:
-                            cached_result = json.load(f)
-                            cached_result['cached'] = True
-                            logger.info(f"Cached result for {algorithm_id}")
-                            return cached_result
-            
-            algorithm_path = algorithm_info.get('github_path', f'algorithms/{algorithm_id}.py')
-            github_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{algorithm_path}'
-            
-            headers = {}
-            if GITHUB_TOKEN:
-                headers['Authorization'] = f'token {GITHUB_TOKEN}'
-            
-            logger.info(f"Downloading algorithm from: {github_url}")
-            response = requests.get(github_url, headers=headers, timeout=30)
-            
-            if response.status_code != 200:
-                raise Exception(f"Failed to download algorithm: HTTP {response.status_code}")
-            
-            code_content = response.text
-            
-            # 개선된 보안 검사
-            dangerous_issues = self.check_dangerous_code(code_content)
-            if dangerous_issues:
-                logger.warning(f"⚠️ Security check found {len(dangerous_issues)} potential issues in {algorithm_id}")
-                for issue in dangerous_issues:
-                    logger.warning(f"  - {issue}")
-                # 경고만 하고 계속 실행 (필요시 여기서 차단 가능)
-            
-            original_import = builtins.__import__
-            
-            def safe_import(name, *args, **kwargs):
-                """보안을 위해 제한된 모듈만 import 허용"""
-                allowed_modules = {
-                    'random', 'math', 'datetime', 'collections', 
-                    'itertools', 'functools', 're', 'statistics',
-                    'operator', 'bisect', 'heapq', 'array',
-                    'pandas', 'numpy', 'pd', 'np',
-                    'warnings'
-                }
-                if name in allowed_modules:
-                    return original_import(name, *args, **kwargs)
-                raise ImportError(f"Module '{name}' is not allowed for security reasons")
-            
-            # 안전한 실행 환경 구성
-            safe_globals = {
-                '__builtins__': {
-                    # 기본 함수들
-                    'len': len, 'range': range, 'enumerate': enumerate,
-                    'zip': zip, 'map': map, 'filter': filter,
-                    'sum': sum, 'max': max, 'min': min, 'abs': abs,
-                    'round': round, 'int': int, 'float': float,
-                    'str': str, 'list': list, 'dict': dict, 'set': set,
-                    'tuple': tuple, 'bool': bool, 'type': type,
-                    'sorted': sorted, 'reversed': reversed,
-                    'any': any, 'all': all,
-                    'isinstance': isinstance,
-                    '__import__': safe_import,
-                    '__build_class__': builtins.__build_class__,
-                    '__name__': '__main__',
-                    'print': print,
-                    'globals': lambda: safe_globals,
-                    # 예외 클래스
-                    'Exception': Exception,
-                    'ValueError': ValueError,
-                    'TypeError': TypeError,
-                    'KeyError': KeyError,
-                    'IndexError': IndexError,
-                    'AttributeError': AttributeError,
-                    'ImportError': ImportError,
-                    'RuntimeError': RuntimeError,
-                    'ZeroDivisionError': ZeroDivisionError,
-                    'StopIteration': StopIteration,
-                    'NameError': NameError,
-                },
-                'pd': pd,
-                'np': np,
-                'Counter': Counter,
-                'lotto_data': self.lotto_df.copy(),
-                'data_path': str(self.data_path),
-                'datetime': datetime,
-                'random': np.random,
-                'user_numbers': user_numbers or [],
-                '__name__': '__main__',
-            }
-            
-            logger.info(f"Executing algorithm: {algorithm_id}")
-            try:
-                exec(code_content, safe_globals)
-            except SyntaxError as e:
-                raise Exception(f"Syntax error in algorithm code: {str(e)}")
-            except Exception as e:
-                raise Exception(f"Runtime error: {str(e)}")
-            
-            result = None
-            for func_name in ['predict_numbers', 'predict', 'generate_numbers', 'main']:
-                if func_name in safe_globals:
-                    logger.info(f"Calling function: {func_name}")
-                    if user_numbers:
-                        result = safe_globals[func_name](user_numbers)
-                    else:
-                        result = safe_globals[func_name]()
-                    break
-            
-            if result is None:
-                raise Exception("No prediction function found (tried: predict_numbers, predict, generate_numbers, main)")
-            
-            if not isinstance(result, (list, tuple)) or len(result) != 6:
-                raise Exception(f"Algorithm must return exactly 6 numbers, got {len(result) if isinstance(result, (list, tuple)) else 'non-list'}")
-            
-            if not all(isinstance(n, (int, np.integer)) and 1 <= n <= 45 for n in result):
-                raise Exception("All numbers must be integers between 1 and 45")
-            
-            if len(set(result)) != 6:
-                raise Exception("All numbers must be unique")
-            
-            prediction_result = {
-                'status': 'success',
-                'numbers': sorted(list(map(int, result))),
-                'algorithm': algorithm_id,
-                'algorithm_name': algorithm_info.get('name', algorithm_id),
-                'accuracy_rate': algorithm_info.get('accuracy_rate', algorithm_info.get('accuracy', 0)),
-                'timestamp': datetime.now().isoformat(),
-                'cached': False
-            }
-            
-            if not user_numbers:
-                cache_file = self.cache_path / f"{self.get_algorithm_cache_key(algorithm_id)}.json"
-                with open(cache_file, 'w', encoding='utf-8') as f:
-                    json.dump(prediction_result, f, ensure_ascii=False, indent=2)
-                logger.info(f"Cached result for {algorithm_id}")
-            
-            return prediction_result
-                
-        except requests.RequestException as e:
-            logger.error(f"Network error downloading algorithm: {str(e)}")
-            return {
-                'status': 'error',
-                'message': f'네트워크 오류: {str(e)}',
-                'algorithm': algorithm_id
-            }
-        except Exception as e:
-            logger.error(f"Algorithm execution failed: {str(e)}", exc_info=True)
-            return {
-                'status': 'error',
-                'message': str(e),
-                'algorithm': algorithm_id
-            }
-    
-    def save_user_prediction(self, user_id, prediction_data):
-        """사용자 예측 저장"""
-        try:
-            if self.user_data_path.exists():
-                with open(self.user_data_path, 'r', encoding='utf-8') as f:
-                    user_data = json.load(f)
-            else:
-                user_data = {}
-            
-            if user_id not in user_data:
-                user_data[user_id] = {
-                    'created_at': datetime.now().isoformat(),
-                    'predictions': [],
-                    'stats': {
-                        'total_predictions': 0,
-                        'total_matches': 0,
-                        'best_match': 0,
-                        'algorithm_usage': {}
-                    }
-                }
-            
-            prediction_entry = {
-                'id': str(uuid.uuid4()),
-                'numbers': prediction_data['numbers'],
-                'algorithm': prediction_data['algorithm'],
-                'algorithm_name': prediction_data.get('algorithm_name', ''),
-                'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
-                'round_predicted': prediction_data.get('round_predicted', 1191),
-                'is_checked': False,
-                'match_result': None,
-                'cached': prediction_data.get('cached', False)
-            }
-            
-            user_data[user_id]['predictions'].append(prediction_entry)
-            user_data[user_id]['stats']['total_predictions'] += 1
-            
-            algo_stats = user_data[user_id]['stats']['algorithm_usage']
-            algo_id = prediction_data['algorithm']
-            algo_stats[algo_id] = algo_stats.get(algo_id, 0) + 1
-            
-            with open(self.user_data_path, 'w', encoding='utf-8') as f:
-                json.dump(user_data, f, ensure_ascii=False, indent=2)
-            
-            return {'status': 'success', 'prediction_id': prediction_entry['id']}
-            
-        except Exception as e:
-            logger.error(f"Failed to save prediction: {str(e)}")
-            return {'status': 'error', 'message': str(e)}
-    
-    def compare_with_winning_numbers(self, user_id, prediction_id, winning_numbers):
-        """당첨번호와 비교"""
-        try:
-            with open(self.user_data_path, 'r', encoding='utf-8') as f:
-                user_data = json.load(f)
-            
-            if user_id not in user_data:
-                return {'status': 'error', 'message': 'User not found'}
-            
-            prediction = None
-            for pred in user_data[user_id]['predictions']:
-                if pred['id'] == prediction_id:
-                    prediction = pred
-                    break
-            
-            if not prediction:
-                return {'status': 'error', 'message': 'Prediction not found'}
-            
-            predicted_numbers = set(prediction['numbers'])
-            winning_set = set(winning_numbers[:6])
-            matches = len(predicted_numbers.intersection(winning_set))
-            
-            prize_info = {
-                6: {'rank': '1등', 'description': '6개 일치'},
-                5: {'rank': '2등', 'description': '5개 일치'},
-                4: {'rank': '3등', 'description': '4개 일치'},
-                3: {'rank': '4등', 'description': '3개 일치'},
-                2: {'rank': '5등', 'description': '2개 일치'},
-                1: {'rank': '6등', 'description': '1개 일치'},
-                0: {'rank': '낙첨', 'description': '일치 없음'}
-            }
-            
-            prediction['is_checked'] = True
-            prediction['match_result'] = {
-                'matches': matches,
-                'winning_numbers': winning_numbers,
-                'matched_numbers': sorted(list(predicted_numbers.intersection(winning_set))),
-                'prize_info': prize_info.get(matches, prize_info[0]),
-                'check_date': datetime.now().isoformat()
-            }
-            
-            user_data[user_id]['stats']['total_matches'] += matches
-            if matches > user_data[user_id]['stats']['best_match']:
-                user_data[user_id]['stats']['best_match'] = matches
-            
-            with open(self.user_data_path, 'w', encoding='utf-8') as f:
-                json.dump(user_data, f, ensure_ascii=False, indent=2)
-            
-            return {
-                'status': 'success',
-                'matches': matches,
-                'result': prediction['match_result']
-            }
-            
-        except Exception as e:
-            logger.error(f"Comparison failed: {str(e)}")
-            return {'status': 'error', 'message': str(e)}
-
-lotto_ai = LottoProAI()
-
-@app.route('/')
-def index():
-    """메인 페이지"""
-    algorithm_count = len(lotto_ai.algorithm_info.get('algorithms', {}))
-    data_count = len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0
-    
-    return render_template('index.html', 
-                         algorithm_count=algorithm_count,
-                         data_count=data_count,
-                         latest_round=1191,
-                         version="3.0")
-
-@app.route('/algorithms')
-def algorithms():
-    """알고리즘 선택 페이지"""
-    algorithms_data = lotto_ai.algorithm_info.get('algorithms', {})
-    categories = lotto_ai.algorithm_info.get('categories', {})
-    difficulty_levels = lotto_ai.algorithm_info.get('difficulty_levels', {})
-    
-    return render_template('algorithm.html', 
-                         algorithms=algorithms_data,
-                         categories=categories,
-                         difficulty_levels=difficulty_levels)
-
-@app.route('/api/execute/<algorithm_id>')
-@rate_limit(60)
-def execute_algorithm(algorithm_id):
-    """알고리즘 실행 API (GET)"""
-    if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
-        return jsonify({'status': 'error', 'message': 'Algorithm not found'}), 404
-    
-    result = lotto_ai.execute_github_algorithm(algorithm_id)
-    return jsonify(result)
-
-@app.route('/api/predict', methods=['POST'])
-@rate_limit(60)
-def predict_numbers():
-    """알고리즘 예측 API (POST)"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                'status': 'error',
-                'message': 'No data provided'
-            }), 400
-        
-        algorithm_id = data.get('algorithm')
-        user_numbers = data.get('user_numbers', [])
-        
-        if not algorithm_id:
-            return jsonify({
-                'status': 'error',
-                'message': 'Algorithm ID is required'
-            }), 400
-        
-        if algorithm_id not in lotto_ai.algorithm_info.get('algorithms', {}):
-            return jsonify({
-                'status': 'error',
-                'message': f'Algorithm "{algorithm_id}" not found'
-            }), 404
-        
-        if user_numbers:
-            if not isinstance(user_numbers, list):
-                return jsonify({
-                    'status': 'error',
-                    'message': 'user_numbers must be a list'
-                }), 400
-            
-            if not all(isinstance(n, int) and 1 <= n <= 45 for n in user_numbers):
-                return jsonify({
-                    'status': 'error',
-                    'message': 'All user numbers must be integers between 1 and 45'
-                }), 400
-            
-            if len(set(user_numbers)) != len(user_numbers):
-                return jsonify({
-                    'status': 'error',
-                    'message': 'User numbers must be unique'
-                }), 400
-        
-        result = lotto_ai.execute_github_algorithm(algorithm_id, user_numbers)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Predict API error: {str(e)}", exc_info=True)
-        return jsonify({
-            'status': 'error',
-            'message': f'Internal server error: {str(e)}'
-        }), 500
-
-@app.route('/api/save-prediction', methods=['POST'])
-def save_prediction():
-    """예측 저장 API"""
-    data = request.get_json()
-    
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
-    
-    user_id = session['user_id']
-    result = lotto_ai.save_user_prediction(user_id, data)
-    
-    return jsonify(result)
-
-@app.route('/api/compare-numbers', methods=['POST'])
-def compare_numbers():
-    """당첨번호 비교 API"""
-    data = request.get_json()
-    
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'status': 'error', 'message': 'User session not found'}), 400
-    
-    winning_numbers = data.get('winning_numbers', [])
-    if not isinstance(winning_numbers, list) or len(winning_numbers) < 6:
-        return jsonify({'status': 'error', 'message': 'Invalid winning numbers'}), 400
-    
-    result = lotto_ai.compare_with_winning_numbers(
-        user_id, 
-        data['prediction_id'], 
-        winning_numbers
-    )
-    
-    return jsonify(result)
-
-@app.route('/api/user-predictions')
-def get_user_predictions():
-    """사용자 예측 목록 조회"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({
-            'predictions': [], 
-            'stats': {
-                'total_predictions': 0, 
-                'total_matches': 0, 
-                'best_match': 0,
-                'algorithm_usage': {}
-            }
-        })
-    
-    try:
-        if lotto_ai.user_data_path.exists():
-            with open(lotto_ai.user_data_path, 'r', encoding='utf-8') as f:
-                user_data = json.load(f)
-                user_info = user_data.get(user_id, {
-                    'predictions': [], 
-                    'stats': {
-                        'total_predictions': 0, 
-                        'total_matches': 0, 
-                        'best_match': 0,
-                        'algorithm_usage': {}
-                    }
-                })
-                return jsonify(user_info)
-    except Exception as e:
-        logger.error(f"Failed to load user predictions: {str(e)}")
-    
-    return jsonify({
-        'predictions': [], 
-        'stats': {
-            'total_predictions': 0, 
-            'total_matches': 0, 
-            'best_match': 0,
-            'algorithm_usage': {}
+    setupEventListeners() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => this.toggleTheme());
         }
-    })
-
-@app.route('/saved-numbers')
-def saved_numbers():
-    """저장된 번호 관리 페이지"""
-    return render_template('saved_numbers.html')
-
-@app.route('/compare')
-def compare():
-    """당첨번호 비교 페이지"""
-    return render_template('compare.html')
-
-@app.route('/statistics')
-def statistics():
-    """통계 분석 페이지"""
-    return render_template('statistics.html')
-
-@app.route('/api/lottery-data')
-def get_lottery_data():
-    """로또 데이터 API"""
-    try:
-        if lotto_ai.lotto_df.empty:
-            return jsonify({
-                'status': 'error',
-                'message': 'No lottery data available'
-            })
+        
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleMobileMenu();
+            });
             
-        return jsonify({
-            'status': 'success',
-            'data': lotto_ai.lotto_df.to_dict('records'),
-            'total_records': len(lotto_ai.lotto_df),
-            'latest_round': 1191
-        })
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)})
-
-@app.route('/api/algorithm-info')
-def get_all_algorithm_info():
-    """전체 알고리즘 정보 조회"""
-    try:
-        algorithms = lotto_ai.algorithm_info.get('algorithms', {})
+            const menuLinks = mobileMenu.querySelectorAll('a');
+            menuLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                    this.closeMobileMenu();
+                });
+            });
+        }
         
-        unique_algorithms = {}
-        for key, value in algorithms.items():
-            if key not in unique_algorithms:
-                unique_algorithms[key] = value
+        const floatingBtn = document.getElementById('floating-btn');
+        if (floatingBtn) {
+            floatingBtn.addEventListener('click', () => this.handleFloatingAction());
+        }
         
-        return jsonify({
-            'status': 'success',
-            'info': unique_algorithms,
-            'count': len(unique_algorithms),
-            'latest_round': 1191,
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Failed to get algorithm info: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
-@app.route('/api/algorithm-info/<algorithm_id>')
-def get_algorithm_info(algorithm_id):
-    """특정 알고리즘 정보 조회"""
-    algorithms = lotto_ai.algorithm_info.get('algorithms', {})
-    if algorithm_id not in algorithms:
-        return jsonify({'status': 'error', 'message': 'Algorithm not found'}), 404
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.refreshData();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.mobileMenuOpen) {
+                this.closeMobileMenu();
+            }
+            
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'd':
+                        e.preventDefault();
+                        this.toggleTheme();
+                        break;
+                    case 'k':
+                        e.preventDefault();
+                        this.focusSearch();
+                        break;
+                }
+            }
+        });
+    }
     
-    return jsonify({
-        'status': 'success',
-        'algorithm': algorithms[algorithm_id]
-    })
-
-@app.route('/api/health')
-def health_check():
-    """서비스 상태 확인"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
-        'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
-        'latest_round': 1191,
-        'version': '3.0'
-    })
-
-@app.errorhandler(404)
-def not_found(error):
-    if request.path.startswith('/api/'):
-        return jsonify({
-            'status': 'error',
-            'message': 'API endpoint not found'
-        }), 404
-    try:
-        return render_template('404.html'), 404
-    except:
-        return jsonify({'status': 'error', 'message': 'Page not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    logger.error(f"Internal server error: {str(error)}", exc_info=True)
-    if request.path.startswith('/api/'):
-        return jsonify({
-            'status': 'error',
-            'message': 'Internal server error'
-        }), 500
-    try:
-        return render_template('500.html'), 500
-    except:
-        return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
-
-@app.after_request
-def after_request(response):
-    """모든 응답에 CORS 헤더 추가"""
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    return response
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    setupTheme() {
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        this.updateThemeIcon();
+    }
     
-    logger.info(f"Starting LottoPro-AI v3.0 server on port {port}")
-    logger.info(f"Debug mode: {debug_mode}")
-    logger.info(f"Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
-    logger.info(f"Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
-    logger.info(f"Latest round: 1191")
+    toggleTheme() {
+        this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+        localStorage.setItem('theme', this.currentTheme);
+        this.updateThemeIcon();
+        this.showToast('테마가 변경되었습니다', 'success');
+        
+        document.body.style.transition = 'all 0.3s ease';
+        setTimeout(() => {
+            document.body.style.transition = '';
+        }, 300);
+    }
     
-    app.run(host='0.0.0.0', port=port, debug=debug_mode)
+    updateThemeIcon() {
+        const themeIcon = document.getElementById('theme-icon');
+        if (themeIcon) {
+            themeIcon.className = this.currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    }
+    
+    setupMobileMenu() {
+        document.addEventListener('click', (e) => {
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            
+            if (this.mobileMenuOpen && 
+                mobileMenu && 
+                !mobileMenu.contains(e.target) && 
+                mobileMenuBtn && 
+                !mobileMenuBtn.contains(e.target)) {
+                this.closeMobileMenu();
+            }
+        });
+        
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768 && this.mobileMenuOpen) {
+                this.closeMobileMenu();
+            }
+        });
+    }
+    
+    toggleMobileMenu() {
+        if (this.mobileMenuOpen) {
+            this.closeMobileMenu();
+        } else {
+            this.openMobileMenu();
+        }
+    }
+    
+    openMobileMenu() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenu) {
+            mobileMenu.style.display = 'block';
+            mobileMenu.classList.remove('hidden');
+            this.mobileMenuOpen = true;
+            
+            setTimeout(() => {
+                mobileMenu.style.opacity = '1';
+                mobileMenu.style.transform = 'translateY(0)';
+            }, 10);
+        }
+    }
+    
+    closeMobileMenu() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenu) {
+            mobileMenu.style.opacity = '0';
+            mobileMenu.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                mobileMenu.classList.add('hidden');
+                mobileMenu.style.display = 'none';
+                this.mobileMenuOpen = false;
+            }, 300);
+        }
+    }
+    
+    setupToastSystem() {
+        if (!document.getElementById('toast-container')) {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed top-20 right-6 z-50 space-y-3';
+            document.body.appendChild(container);
+        }
+    }
+    
+    showToast(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icon = this.getToastIcon(type);
+        toast.innerHTML = `
+            <div class="flex items-center">
+                <i class="${icon} mr-3"></i>
+                <span>${message}</span>
+                <button class="ml-4 opacity-70 hover:opacity-100" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+    
+    getToastIcon(type) {
+        const icons = {
+            success: 'fas fa-check-circle text-green-400',
+            error: 'fas fa-exclamation-circle text-red-400',
+            warning: 'fas fa-exclamation-triangle text-yellow-400',
+            info: 'fas fa-info-circle text-blue-400'
+        };
+        return icons[type] || icons.info;
+    }
+    
+    showLoading(message = 'AI가 번호를 분석중입니다...') {
+        this.isLoading = true;
+        const overlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        
+        if (loadingText) loadingText.textContent = message;
+        if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.opacity = '1', 10);
+        }
+    }
+    
+    hideLoading() {
+        this.isLoading = false;
+        const overlay = document.getElementById('loading-overlay');
+        
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+    }
+    
+    async saveNumbers(numbers, algorithmName = 'AI 예측', algorithmId = 'unknown') {
+        console.log('💾 번호 저장 시도:', numbers, algorithmName, algorithmId);
+        
+        try {
+            const validation = this.validateLottoNumbers(numbers);
+            if (!validation.valid) {
+                this.showToast(validation.message, 'error');
+                return false;
+            }
+            
+            // 백엔드 API로 저장
+            const response = await fetch('/api/save-prediction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    numbers: Array.isArray(numbers) ? numbers : [],
+                    algorithm: algorithmId,
+                    algorithm_name: algorithmName,
+                    timestamp: new Date().toISOString(),
+                    round_predicted: 1191
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'success') {
+                // localStorage에도 캐시 (선택적)
+                this.cacheToLocalStorage(numbers, algorithmName);
+                
+                console.log('✅ 서버 저장 완료:', result.prediction_id);
+                this.showToast('번호가 저장되었습니다!', 'success');
+                
+                // 데이터 새로고침
+                await this.loadUserData();
+                
+                return true;
+            } else {
+                throw new Error(result.message || '저장 실패');
+            }
+            
+        } catch (error) {
+            console.error('❌ 저장 실패:', error);
+            this.showToast('번호 저장에 실패했습니다', 'error');
+            return false;
+        }
+    }
+    
+    cacheToLocalStorage(numbers, algorithmName) {
+        try {
+            const cached = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+            cached.unshift({
+                id: Date.now(),
+                numbers: numbers,
+                timestamp: new Date().toISOString(),
+                algorithm: algorithmName,
+                cached: true
+            });
+            localStorage.setItem('savedNumbers', JSON.stringify(cached.slice(0, 50)));
+        } catch (error) {
+            console.warn('localStorage 캐시 실패:', error);
+        }
+    }
+    
+    getSavedNumbers() {
+        // localStorage가 아닌 서버에서 가져오기
+        return this.userPredictions || [];
+    }
+    
+    async deleteSavedNumber(id) {
+        try {
+            // 서버의 prediction_id로 삭제하는 API가 필요함
+            // 현재는 localStorage에서만 삭제
+            const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+            const filtered = savedNumbers.filter(n => n.id !== id);
+            localStorage.setItem('savedNumbers', JSON.stringify(filtered));
+            
+            this.showToast('번호가 삭제되었습니다', 'success');
+            await this.loadUserData();
+            return true;
+        } catch (error) {
+            console.error('삭제 실패:', error);
+            this.showToast('삭제에 실패했습니다', 'error');
+            return false;
+        }
+    }
+    
+    clearAllSavedNumbers() {
+        try {
+            localStorage.removeItem('savedNumbers');
+            this.showToast('모든 번호가 삭제되었습니다', 'success');
+            return true;
+        } catch (error) {
+            console.error('전체 삭제 실패:', error);
+            return false;
+        }
+    }
+    
+    async loadUserData() {
+        try {
+            const response = await fetch('/api/user-predictions');
+            const data = await response.json();
+            
+            this.userPredictions = data.predictions || [];
+            this.updateStatsDisplay(data.stats || {});
+            
+            console.log('📊 사용자 데이터 로드:', this.userPredictions.length, '개');
+            
+            return data;
+        } catch (error) {
+            console.error('사용자 데이터 로드 실패:', error);
+            return { predictions: [], stats: {} };
+        }
+    }
+    
+    updateStatsDisplay(stats) {
+        const elements = {
+            'saved-predictions': stats.total_predictions || 0,
+            'total-predictions': stats.total_predictions || 0,
+            'accuracy-rate': this.calculateAccuracy(stats) + '%',
+            'best-match': stats.best_match || 0,
+            'total-matches': stats.total_matches || 0
+        };
+        
+        Object.entries(elements).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                this.animateNumber(element, value);
+            }
+        });
+    }
+    
+    calculateAccuracy(stats) {
+        if (!stats.total_predictions || stats.total_predictions === 0) return 0;
+        return Math.round((stats.total_matches / (stats.total_predictions * 6)) * 100);
+    }
+    
+    animateNumber(element, targetValue) {
+        const currentValue = parseInt(element.textContent) || 0;
+        const target = parseInt(targetValue) || 0;
+        const duration = 1000;
+        const steps = 30;
+        const increment = (target - currentValue) / steps;
+        
+        let current = currentValue;
+        let step = 0;
+        
+        const timer = setInterval(() => {
+            step++;
+            current += increment;
+            element.textContent = Math.round(current);
+            
+            if (step >= steps) {
+                element.textContent = targetValue;
+                clearInterval(timer);
+            }
+        }, duration / steps);
+    }
+    
+    startRealTimeUpdates() {
+        setInterval(() => {
+            this.updateLastUpdateTime();
+        }, 30000);
+        
+        this.updateLastUpdateTime();
+    }
+    
+    updateLastUpdateTime() {
+        const element = document.getElementById('last-update');
+        if (element) {
+            const now = new Date();
+            const timeString = this.getRelativeTime(now);
+            element.textContent = timeString;
+        }
+    }
+    
+    getRelativeTime(date) {
+        const now = new Date();
+        const diffInSeconds = Math.floor((now - date) / 1000);
+        
+        if (diffInSeconds < 60) return '방금';
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
+        return `${Math.floor(diffInSeconds / 86400)}일 전`;
+    }
+    
+    async apiRequest(url, options = {}) {
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('API 요청 실패:', error);
+            this.showToast('서버 통신 중 오류가 발생했습니다', 'error');
+            throw error;
+        }
+    }
+    
+    handleFloatingAction() {
+        const path = window.location.pathname;
+        
+        switch (path) {
+            case '/':
+                this.scrollToSection('quick-prediction-section');
+                break;
+            case '/algorithms':
+                this.quickAlgorithmRun();
+                break;
+            case '/saved-numbers':
+                this.addNewPrediction();
+                break;
+            case '/compare':
+                this.quickCompare();
+                break;
+            default:
+                window.location.href = '/algorithms';
+        }
+    }
+    
+    quickAlgorithmRun() {
+        const firstBtn = document.querySelector('[data-algorithm-id]');
+        if (firstBtn) {
+            firstBtn.click();
+        } else {
+            this.showToast('실행 가능한 알고리즘이 없습니다', 'warning');
+        }
+    }
+    
+    addNewPrediction() {
+        window.location.href = '/algorithms';
+    }
+    
+    quickCompare() {
+        this.showToast('당첨번호를 입력해주세요', 'info');
+    }
+    
+    scrollToSection(sectionId) {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            section.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+            
+            section.style.transition = 'all 0.5s ease';
+            section.style.transform = 'scale(1.02)';
+            section.style.boxShadow = '0 0 30px rgba(102, 126, 234, 0.3)';
+            
+            setTimeout(() => {
+                section.style.transform = '';
+                section.style.boxShadow = '';
+            }, 1000);
+        }
+    }
+    
+    generateRandomNumbers(count = 6, min = 1, max = 45) {
+        const numbers = [];
+        while (numbers.length < count) {
+            const num = Math.floor(Math.random() * (max - min + 1)) + min;
+            if (!numbers.includes(num)) {
+                numbers.push(num);
+            }
+        }
+        return numbers.sort((a, b) => a - b);
+    }
+    
+    formatNumbers(numbers) {
+        return numbers.map(num => num.toString().padStart(2, '0')).join(', ');
+    }
+    
+    validateLottoNumbers(numbers) {
+        if (!Array.isArray(numbers)) {
+            return { valid: false, message: '번호는 배열이어야 합니다' };
+        }
+        
+        if (numbers.length !== 6) {
+            return { valid: false, message: '6개의 번호가 필요합니다' };
+        }
+        
+        for (const num of numbers) {
+            if (!Number.isInteger(num) || num < 1 || num > 45) {
+                return { valid: false, message: '번호는 1-45 범위여야 합니다' };
+            }
+        }
+        
+        if (new Set(numbers).size !== numbers.length) {
+            return { valid: false, message: '중복된 번호가 있습니다' };
+        }
+        
+        return { valid: true };
+    }
+    
+    async refreshData() {
+        if (this.isLoading) return;
+        
+        try {
+            await this.loadUserData();
+            this.showToast('데이터가 새로고침되었습니다', 'success', 2000);
+        } catch (error) {
+            console.error('데이터 새로고침 실패:', error);
+        }
+    }
+    
+    focusSearch() {
+        const searchInput = document.querySelector('input[type="search"], input[placeholder*="검색"]');
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+        }
+    }
+    
+    handleError(error, context = '') {
+        console.error(`오류 발생 ${context}:`, error);
+        
+        let message = '알 수 없는 오류가 발생했습니다';
+        
+        if (error.message) {
+            if (error.message.includes('fetch')) {
+                message = '네트워크 연결을 확인해주세요';
+            } else if (error.message.includes('404')) {
+                message = '요청한 리소스를 찾을 수 없습니다';
+            } else if (error.message.includes('500')) {
+                message = '서버 오류가 발생했습니다';
+            } else {
+                message = error.message;
+            }
+        }
+        
+        this.showToast(message, 'error');
+    }
+    
+    logPerformance(operation, startTime) {
+        const duration = performance.now() - startTime;
+        console.log(`⚡ ${operation} 완료: ${duration.toFixed(2)}ms`);
+        
+        if (duration > 3000) {
+            console.warn(`⚠️ 느린 작업 감지: ${operation} (${duration.toFixed(2)}ms)`);
+        }
+    }
+}
+
+let lottoApp;
+
+document.addEventListener('DOMContentLoaded', function() {
+    lottoApp = new LottoProApp();
+    
+    window.lottoApp = lottoApp;
+    window.showToast = (msg, type, duration) => lottoApp.showToast(msg, type, duration);
+    window.showLoading = (msg) => lottoApp.showLoading(msg);
+    window.hideLoading = () => lottoApp.hideLoading();
+    
+    window.saveNumbers = (numbers, algorithmName, algorithmId) => lottoApp.saveNumbers(numbers, algorithmName, algorithmId);
+    window.getSavedNumbers = () => lottoApp.getSavedNumbers();
+    window.deleteSavedNumber = (id) => lottoApp.deleteSavedNumber(id);
+    
+    setupPWAInstallPrompt();
+    
+    console.log('🎯 LottoPro-AI v3.0 준비 완료!');
+});
+
+function setupPWAInstallPrompt() {
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        const installBtn = document.getElementById('pwa-install-btn');
+        if (installBtn) {
+            installBtn.style.display = 'block';
+            installBtn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('PWA 설치됨');
+                        lottoApp.showToast('앱이 설치되었습니다!', 'success');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        }
+    });
+    
+    window.addEventListener('appinstalled', () => {
+        console.log('PWA 설치 완료');
+        lottoApp.showToast('LottoPro-AI가 성공적으로 설치되었습니다!', 'success', 5000);
+    });
+}
