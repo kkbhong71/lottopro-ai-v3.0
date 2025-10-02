@@ -1315,3 +1315,294 @@ body {
     page-break-inside: avoid;
   }
 }
+
+/* ===== 모바일 최적화 (기존 CSS 파일 끝에 추가) ===== */
+
+/* 모바일 전용 스타일 */
+@media (max-width: 768px) {
+    /* 전체 컨테이너 패딩 조정 */
+    .max-w-7xl {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* 네비게이션 높이 조정 */
+    nav .flex.items-center.justify-between {
+        height: 60px;
+    }
+
+    /* 로고 영역 축소 */
+    nav .flex.items-center.space-x-3 {
+        gap: 0.5rem;
+    }
+
+    nav .w-10.h-10 {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    nav h1 {
+        font-size: 1rem;
+    }
+
+    nav .text-xs {
+        font-size: 0.625rem;
+    }
+
+    /* 헤더 섹션 */
+    .hero-section h1,
+    h1.text-5xl,
+    h1.text-6xl {
+        font-size: 1.875rem !important;
+        line-height: 2.25rem !important;
+    }
+
+    .hero-section h2,
+    h2.text-3xl,
+    h2.text-4xl {
+        font-size: 1.5rem !important;
+        line-height: 2rem !important;
+    }
+
+    .hero-section p,
+    .text-xl {
+        font-size: 1rem !important;
+        line-height: 1.5rem !important;
+    }
+
+    /* 카드 레이아웃 */
+    .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .card,
+    .glass-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    /* 버튼 크기 조정 */
+    .btn,
+    button {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* 통계 카드 */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    /* 알고리즘 카드 */
+    .algorithm-card {
+        padding: 1rem;
+    }
+
+    .algorithm-card h3 {
+        font-size: 1.125rem;
+    }
+
+    .algorithm-card p {
+        font-size: 0.875rem;
+    }
+
+    /* 정확도 배지 */
+    .accuracy-badge {
+        font-size: 1rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* 번호 디스플레이 */
+    .lotto-ball {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+
+    /* 플로팅 버튼 위치 조정 */
+    #floating-btn {
+        width: 3rem;
+        height: 3rem;
+        bottom: 1rem;
+        right: 1rem;
+    }
+
+    #floating-btn i {
+        font-size: 1.25rem;
+    }
+
+    /* 토스트 알림 위치 */
+    #toast-container {
+        top: 70px;
+        right: 1rem;
+        left: 1rem;
+        width: auto;
+    }
+
+    .toast {
+        font-size: 0.875rem;
+        padding: 0.75rem;
+    }
+
+    /* 모달 크기 조정 */
+    .modal-content {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+    }
+
+    /* 푸터 */
+    footer {
+        padding: 2rem 1rem;
+    }
+
+    footer .text-lg {
+        font-size: 1rem;
+    }
+
+    footer .text-sm {
+        font-size: 0.75rem;
+    }
+
+    /* 섹션 간격 조정 */
+    section {
+        padding: 2rem 0;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    /* 입력 필드 */
+    input,
+    select,
+    textarea {
+        font-size: 1rem;
+        padding: 0.75rem;
+    }
+
+    /* 테이블 반응형 */
+    table {
+        font-size: 0.875rem;
+    }
+
+    th,
+    td {
+        padding: 0.5rem;
+    }
+
+    /* 아이콘 크기 */
+    .fas,
+    .far {
+        font-size: 1rem;
+    }
+
+    /* 로딩 오버레이 */
+    #loading-overlay .bg-white\/10 {
+        padding: 2rem;
+        margin: 1rem;
+    }
+
+    #loading-text {
+        font-size: 0.875rem;
+    }
+
+    .spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+/* 매우 작은 화면 (360px 이하) */
+@media (max-width: 360px) {
+    nav h1 {
+        font-size: 0.875rem;
+    }
+
+    .hero-section h1 {
+        font-size: 1.5rem !important;
+    }
+
+    .hero-section h2 {
+        font-size: 1.25rem !important;
+    }
+
+    .btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.8125rem;
+    }
+
+    .lotto-ball {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* 가로 모드 최적화 */
+@media (max-width: 768px) and (orientation: landscape) {
+    nav {
+        position: sticky;
+        top: 0;
+    }
+
+    .hero-section {
+        padding: 1.5rem 0;
+    }
+
+    #loading-overlay .bg-white\/10 {
+        padding: 1.5rem;
+    }
+}
+
+/* 터치 디바이스 최적화 */
+@media (hover: none) and (pointer: coarse) {
+    .btn,
+    button,
+    a {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .mobile-nav-link {
+        padding: 1rem;
+        font-size: 1rem;
+    }
+}
+
+/* 텍스트 가독성 개선 */
+@media (max-width: 768px) {
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        font-size: 16px;
+        line-height: 1.5;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+    }
+
+    p {
+        word-break: keep-all;
+        overflow-wrap: break-word;
+    }
+}
