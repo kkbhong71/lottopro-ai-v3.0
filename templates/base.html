@@ -7,7 +7,7 @@
     
     <!-- PWA 메타 태그 -->
     <meta name="theme-color" content="#1a1a2e">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     
@@ -71,7 +71,7 @@
         </div>
         
         <!-- 모바일 메뉴 -->
-        <div id="mobile-menu" class="hidden md:hidden backdrop-blur-md bg-white/5 border-t border-white/10">
+        <div id="mobile-menu" class="hidden md:hidden backdrop-blur-md bg-white/5 border-t border-white/10" style="display: none;">
             <div class="px-4 py-3 space-y-2">
                 <a href="/" class="mobile-nav-link">
                     <i class="fas fa-home mr-3"></i>홈
@@ -147,7 +147,6 @@
     
     <!-- 초기화 스크립트 -->
     <script>
-    // 전역 초기화 확인
     console.log('📦 Base HTML 로드 완료');
     console.log('🔧 Main.js:', typeof lottoApp !== 'undefined' ? '✅' : '❌');
     console.log('🔧 GitHub API:', typeof githubAPIManager !== 'undefined' ? '✅' : '❌');
