@@ -1,6 +1,6 @@
 /**
  * LottoPro-AI v3.0 - 메인 JavaScript 모듈
- * 개선된 버전 - UI 중복 문제 해결 및 모바일 메뉴 개선
+ * 개선된 버전 - 백엔드 API 통합
  */
 
 class LottoProApp {
@@ -228,8 +228,8 @@ class LottoProApp {
         }
     }
     
-    saveNumbers(numbers, algorithmName = 'AI 예측') {
-        console.log('💾 번호 저장 시도:', numbers, algorithmName);
+    async saveNumbers(numbers, algorithmName = 'AI 예측', algorithmId = 'unknown') {
+        console.log('💾 번호 저장 시도:', numbers, algorithmName, algorithmId);
         
         try {
             const validation = this.validateLottoNumbers(numbers);
@@ -238,27 +238,37 @@ class LottoProApp {
                 return false;
             }
             
-            const savedNumbers = this.getSavedNumbers();
+            // 백엔드 API로 저장
+            const response = await fetch('/api/save-prediction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    numbers: Array.isArray(numbers) ? numbers : [],
+                    algorithm: algorithmId,
+                    algorithm_name: algorithmName,
+                    timestamp: new Date().toISOString(),
+                    round_predicted: 1191
+                })
+            });
             
-            const newEntry = {
-                id: Date.now(),
-                numbers: Array.isArray(numbers) ? numbers : [],
-                timestamp: new Date().toISOString(),
-                algorithm: algorithmName,
-                checked: false,
-                matches: 0
-            };
+            const result = await response.json();
             
-            savedNumbers.unshift(newEntry);
-            
-            const trimmedNumbers = savedNumbers.slice(0, 100);
-            localStorage.setItem('savedNumbers', JSON.stringify(trimmedNumbers));
-            
-            console.log('✅ 저장 완료. 총 개수:', trimmedNumbers.length);
-            
-            this.showToast('번호가 저장되었습니다!', 'success');
-            
-            return true;
+            if (result.status === 'success') {
+                // localStorage에도 캐시 (선택적)
+                this.cacheToLocalStorage(numbers, algorithmName);
+                
+                console.log('✅ 서버 저장 완료:', result.prediction_id);
+                this.showToast('번호가 저장되었습니다!', 'success');
+                
+                // 데이터 새로고침
+                await this.loadUserData();
+                
+                return true;
+            } else {
+                throw new Error(result.message || '저장 실패');
+            }
             
         } catch (error) {
             console.error('❌ 저장 실패:', error);
@@ -267,22 +277,37 @@ class LottoProApp {
         }
     }
     
-    getSavedNumbers() {
+    cacheToLocalStorage(numbers, algorithmName) {
         try {
-            const data = localStorage.getItem('savedNumbers');
-            return data ? JSON.parse(data) : [];
+            const cached = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+            cached.unshift({
+                id: Date.now(),
+                numbers: numbers,
+                timestamp: new Date().toISOString(),
+                algorithm: algorithmName,
+                cached: true
+            });
+            localStorage.setItem('savedNumbers', JSON.stringify(cached.slice(0, 50)));
         } catch (error) {
-            console.error('저장된 번호 로드 실패:', error);
-            return [];
+            console.warn('localStorage 캐시 실패:', error);
         }
     }
     
-    deleteSavedNumber(id) {
+    getSavedNumbers() {
+        // localStorage가 아닌 서버에서 가져오기
+        return this.userPredictions || [];
+    }
+    
+    async deleteSavedNumber(id) {
         try {
-            const savedNumbers = this.getSavedNumbers();
+            // 서버의 prediction_id로 삭제하는 API가 필요함
+            // 현재는 localStorage에서만 삭제
+            const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
             const filtered = savedNumbers.filter(n => n.id !== id);
             localStorage.setItem('savedNumbers', JSON.stringify(filtered));
+            
             this.showToast('번호가 삭제되었습니다', 'success');
+            await this.loadUserData();
             return true;
         } catch (error) {
             console.error('삭제 실패:', error);
@@ -306,18 +331,26 @@ class LottoProApp {
         try {
             const response = await fetch('/api/user-predictions');
             const data = await response.json();
+            
             this.userPredictions = data.predictions || [];
             this.updateStatsDisplay(data.stats || {});
+            
+            console.log('📊 사용자 데이터 로드:', this.userPredictions.length, '개');
+            
+            return data;
         } catch (error) {
             console.error('사용자 데이터 로드 실패:', error);
+            return { predictions: [], stats: {} };
         }
     }
     
     updateStatsDisplay(stats) {
         const elements = {
             'saved-predictions': stats.total_predictions || 0,
+            'total-predictions': stats.total_predictions || 0,
             'accuracy-rate': this.calculateAccuracy(stats) + '%',
-            'best-match': stats.best_match || 0
+            'best-match': stats.best_match || 0,
+            'total-matches': stats.total_matches || 0
         };
         
         Object.entries(elements).forEach(([id, value]) => {
@@ -557,7 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showLoading = (msg) => lottoApp.showLoading(msg);
     window.hideLoading = () => lottoApp.hideLoading();
     
-    window.saveNumbers = (numbers, algorithmName) => lottoApp.saveNumbers(numbers, algorithmName);
+    window.saveNumbers = (numbers, algorithmName, algorithmId) => lottoApp.saveNumbers(numbers, algorithmName, algorithmId);
     window.getSavedNumbers = () => lottoApp.getSavedNumbers();
     window.deleteSavedNumber = (id) => lottoApp.deleteSavedNumber(id);
     
