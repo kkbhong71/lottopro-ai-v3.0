@@ -229,14 +229,37 @@ class LottoProApp {
     }
     
     async saveNumbers(numbers, algorithmName = 'AI 예측', algorithmId = 'unknown') {
-        console.log('💾 번호 저장 시도:', numbers, algorithmName, algorithmId);
+        console.log('💾 번호 저장 시도:', {
+            numbers: numbers,
+            type: typeof numbers,
+            isArray: Array.isArray(numbers),
+            algorithmName: algorithmName,
+            algorithmId: algorithmId
+        });
         
         try {
-            const validation = this.validateLottoNumbers(numbers);
+            // ✅ 번호 정규화 - 배열로 확실히 변환
+            let normalizedNumbers = this.normalizeNumbers(numbers);
+            
+            console.log('📊 정규화된 번호:', normalizedNumbers);
+            
+            // 검증
+            const validation = this.validateLottoNumbers(normalizedNumbers);
             if (!validation.valid) {
                 this.showToast(validation.message, 'error');
                 return false;
             }
+            
+            // ✅ 서버 전송 데이터 구성
+            const payload = {
+                numbers: normalizedNumbers, // 반드시 배열
+                algorithm: algorithmId,
+                algorithm_name: algorithmName,
+                timestamp: new Date().toISOString(),
+                round_predicted: 1191
+            };
+            
+            console.log('📤 서버 전송 데이터:', JSON.stringify(payload, null, 2));
             
             // 백엔드 API로 저장
             const response = await fetch('/api/save-prediction', {
@@ -244,20 +267,14 @@ class LottoProApp {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    numbers: Array.isArray(numbers) ? numbers : [],
-                    algorithm: algorithmId,
-                    algorithm_name: algorithmName,
-                    timestamp: new Date().toISOString(),
-                    round_predicted: 1191
-                })
+                body: JSON.stringify(payload)
             });
             
             const result = await response.json();
             
             if (result.status === 'success') {
                 // localStorage에도 캐시 (선택적)
-                this.cacheToLocalStorage(numbers, algorithmName);
+                this.cacheToLocalStorage(normalizedNumbers, algorithmName);
                 
                 console.log('✅ 서버 저장 완료:', result.prediction_id);
                 this.showToast('번호가 저장되었습니다!', 'success');
@@ -277,31 +294,102 @@ class LottoProApp {
         }
     }
     
+    /**
+     * ✅ 번호 정규화 - 다양한 입력을 배열로 변환
+     */
+    normalizeNumbers(numbers) {
+        // 이미 배열이면 그대로
+        if (Array.isArray(numbers)) {
+            return numbers.map(n => parseInt(n)).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+        }
+        
+        // 문자열인 경우
+        if (typeof numbers === 'string') {
+            // 쉼표 구분
+            if (numbers.includes(',')) {
+                return numbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+            }
+            // 공백 구분
+            if (numbers.includes(' ')) {
+                return numbers.split(/\s+/).map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 45);
+            }
+            // 붙어있는 숫자 - 파싱 시도
+            const parsed = this.parseNumberString(numbers);
+            if (parsed.length > 0) {
+                return parsed;
+            }
+        }
+        
+        // 숫자인 경우 (단일 숫자)
+        if (typeof numbers === 'number') {
+            if (numbers >= 1 && numbers <= 45) {
+                return [numbers];
+            }
+        }
+        
+        console.warn('⚠️ 번호 정규화 실패, 빈 배열 반환:', numbers);
+        return [];
+    }
+    
+    /**
+     * ✅ 붙어있는 숫자 문자열 파싱
+     */
+    parseNumberString(str) {
+        const result = [];
+        let i = 0;
+        
+        while (i < str.length && result.length < 6) {
+            if (i + 1 < str.length) {
+                const twoDigit = parseInt(str.substring(i, i + 2));
+                const oneDigit = parseInt(str[i]);
+                
+                if (twoDigit >= 10 && twoDigit <= 45) {
+                    const remaining = str.length - (i + 2);
+                    const numbersNeeded = 6 - result.length - 1;
+                    
+                    if (remaining >= numbersNeeded) {
+                        result.push(twoDigit);
+                        i += 2;
+                    } else {
+                        result.push(oneDigit);
+                        i += 1;
+                    }
+                } else {
+                    result.push(oneDigit);
+                    i += 1;
+                }
+            } else {
+                result.push(parseInt(str[i]));
+                i += 1;
+            }
+        }
+        
+        return result.filter(n => !isNaN(n) && n >= 1 && n <= 45);
+    }
+    
     cacheToLocalStorage(numbers, algorithmName) {
         try {
             const cached = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
             cached.unshift({
                 id: Date.now(),
-                numbers: numbers,
+                numbers: numbers, // 배열로 저장
                 timestamp: new Date().toISOString(),
                 algorithm: algorithmName,
                 cached: true
             });
             localStorage.setItem('savedNumbers', JSON.stringify(cached.slice(0, 50)));
+            console.log('💾 localStorage 캐시 완료');
         } catch (error) {
-            console.warn('localStorage 캐시 실패:', error);
+            console.warn('⚠️ localStorage 캐시 실패:', error);
         }
     }
     
     getSavedNumbers() {
-        // localStorage가 아닌 서버에서 가져오기
         return this.userPredictions || [];
     }
     
     async deleteSavedNumber(id) {
         try {
-            // 서버의 prediction_id로 삭제하는 API가 필요함
-            // 현재는 localStorage에서만 삭제
             const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
             const filtered = savedNumbers.filter(n => n.id !== id);
             localStorage.setItem('savedNumbers', JSON.stringify(filtered));
