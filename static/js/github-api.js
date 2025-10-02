@@ -569,8 +569,6 @@ async function loadAlgorithmPreview() {
 // 전역 함수로 노출
 window.loadAlgorithmPreview = loadAlgorithmPreview;
 
-console.log('📦 github-api.js 로드 완료');
-
 // ===== 번호 저장 함수 (localStorage) =====
 
 /**
@@ -579,25 +577,45 @@ console.log('📦 github-api.js 로드 완료');
  * @param {String} algorithmName - 알고리즘 이름
  */
 window.saveNumbers = function(numbers, algorithmName) {
-    console.log('💾 번호 저장:', numbers, algorithmName);
+    console.log('💾 번호 저장 시도:', numbers, algorithmName);
     
     try {
         // 유효성 검사
-        if (!Array.isArray(numbers) || numbers.length !== 6) {
-            throw new Error('잘못된 번호 형식');
+        if (!Array.isArray(numbers)) {
+            throw new Error('numbers는 배열이어야 합니다');
         }
         
-        if (!numbers.every(n => Number.isInteger(n) && n >= 1 && n <= 45)) {
-            throw new Error('번호는 1-45 사이의 정수여야 합니다');
+        if (numbers.length !== 6) {
+            throw new Error(`6개의 번호가 필요합니다 (현재: ${numbers.length}개)`);
+        }
+        
+        // 각 번호 검증
+        for (let num of numbers) {
+            const n = parseInt(num);
+            if (isNaN(n) || n < 1 || n > 45) {
+                throw new Error(`잘못된 번호: ${num} (1-45 범위여야 함)`);
+            }
+        }
+        
+        // 중복 검사
+        if (new Set(numbers).size !== 6) {
+            throw new Error('중복된 번호가 있습니다');
         }
         
         // 기존 데이터 로드
-        const savedNumbers = JSON.parse(localStorage.getItem('savedNumbers') || '[]');
+        let savedNumbers = [];
+        try {
+            const stored = localStorage.getItem('savedNumbers');
+            savedNumbers = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.warn('기존 데이터 로드 실패, 새로 시작:', e);
+            savedNumbers = [];
+        }
         
-        // 새 항목 생성 (saved_numbers.html 형식)
+        // 새 항목 생성 (saved_numbers.html 형식에 맞춤)
         const newEntry = {
             id: Date.now(),
-            numbers: numbers,
+            numbers: numbers.map(n => parseInt(n)),
             timestamp: new Date().toISOString(),
             algorithm: algorithmName || 'AI 예측',
             checked: false,
@@ -608,22 +626,25 @@ window.saveNumbers = function(numbers, algorithmName) {
         savedNumbers.unshift(newEntry);
         
         // 최대 100개까지만 유지
-        const trimmed = savedNumbers.slice(0, 100);
+        if (savedNumbers.length > 100) {
+            savedNumbers = savedNumbers.slice(0, 100);
+        }
         
         // 저장
-        localStorage.setItem('savedNumbers', JSON.stringify(trimmed));
+        localStorage.setItem('savedNumbers', JSON.stringify(savedNumbers));
         
-        console.log('✅ 저장 완료. 총', trimmed.length, '개');
+        console.log('✅ 번호 저장 완료! 총', savedNumbers.length, '개');
         
         return true;
         
     } catch (error) {
-        console.error('❌ 저장 실패:', error);
+        console.error('❌ 번호 저장 실패:', error);
         
+        // 사용자에게 에러 알림
         if (window.showToast) {
-            window.showToast('번호 저장에 실패했습니다: ' + error.message, 'error');
+            window.showToast(`저장 실패: ${error.message}`, 'error', 4000);
         } else {
-            alert('저장 실패: ' + error.message);
+            alert(`번호 저장 실패\n\n${error.message}`);
         }
         
         return false;
@@ -631,3 +652,4 @@ window.saveNumbers = function(numbers, algorithmName) {
 };
 
 console.log('💾 saveNumbers 함수 등록 완료');
+console.log('📦 github-api.js 로드 완료');
