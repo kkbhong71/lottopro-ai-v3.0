@@ -16,6 +16,7 @@ import importlib.util
 import sys
 from collections import Counter
 import builtins
+import re
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
@@ -126,6 +127,30 @@ class LottoProAI:
             logger.error(f"Error loading lottery data: {str(e)}")
             self.lotto_df = pd.DataFrame()
     
+    def check_dangerous_code(self, code_content):
+        """개선된 보안 검사 - 정규표현식 사용"""
+        dangerous_patterns = [
+            (r'\brm\s+-[rf]', 'Shell command: rm -rf (파일 삭제)'),
+            (r'\bos\.system\s*\(', 'os.system() 호출'),
+            (r'\bos\.remove\s*\(', 'os.remove() 호출'),
+            (r'\bos\.rmdir\s*\(', 'os.rmdir() 호출'),
+            (r'\bos\.unlink\s*\(', 'os.unlink() 호출'),
+            (r'\bsubprocess\.', 'subprocess 모듈 사용'),
+            (r'\bshutil\.rmtree\s*\(', 'shutil.rmtree() 호출'),
+            (r'\bexec\s*\(', 'exec() 호출'),
+            (r'\beval\s*\(', 'eval() 호출'),
+            (r'\b__import__\s*\(', '동적 import'),
+            (r'\bopen\s*\([^)]*[\'"]w[\'"]', '파일 쓰기 모드'),
+        ]
+        
+        found_issues = []
+        for pattern, description in dangerous_patterns:
+            if re.search(pattern, code_content, re.IGNORECASE):
+                found_issues.append(description)
+                logger.warning(f"⚠️ Potentially dangerous pattern: {description}")
+        
+        return found_issues
+    
     def get_algorithm_cache_key(self, algorithm_id):
         """알고리즘 캐시 키 생성"""
         data_hash = hashlib.md5(str(len(self.lotto_df)).encode()).hexdigest()[:8]
@@ -149,7 +174,7 @@ class LottoProAI:
                         with open(cache_file, 'r', encoding='utf-8') as f:
                             cached_result = json.load(f)
                             cached_result['cached'] = True
-                            logger.info(f"Using cached result for {algorithm_id}")
+                            logger.info(f"Cached result for {algorithm_id}")
                             return cached_result
             
             algorithm_path = algorithm_info.get('github_path', f'algorithms/{algorithm_id}.py')
@@ -167,14 +192,13 @@ class LottoProAI:
             
             code_content = response.text
             
-            dangerous_patterns = [
-                'import os', 'subprocess', 'system(',
-                'rm ', 'del ', 'remove(', 'shutil'
-            ]
-            
-            for pattern in dangerous_patterns:
-                if pattern in code_content:
-                    logger.warning(f"Potentially dangerous pattern found: {pattern}")
+            # 개선된 보안 검사
+            dangerous_issues = self.check_dangerous_code(code_content)
+            if dangerous_issues:
+                logger.warning(f"⚠️ Security check found {len(dangerous_issues)} potential issues in {algorithm_id}")
+                for issue in dangerous_issues:
+                    logger.warning(f"  - {issue}")
+                # 경고만 하고 계속 실행 (필요시 여기서 차단 가능)
             
             original_import = builtins.__import__
             
@@ -209,7 +233,7 @@ class LottoProAI:
                     '__name__': '__main__',
                     'print': print,
                     'globals': lambda: safe_globals,
-                    # 예외 클래스 추가
+                    # 예외 클래스
                     'Exception': Exception,
                     'ValueError': ValueError,
                     'TypeError': TypeError,
