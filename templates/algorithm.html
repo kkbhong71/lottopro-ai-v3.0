@@ -60,7 +60,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🧠 알고리즘 페이지 초기화');
+    console.log('🧠 알고리즘 페이지 로드 완료');
 
     // ===== 정렬 이벤트 =====
     const sortSelect = document.getElementById('sort-select');
@@ -68,12 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
         sortSelect.addEventListener('change', function() {
             const sortBy = this.value;
             const filterBy = document.getElementById('filter-select')?.value || 'all';
-            console.log('📊 정렬 변경:', sortBy);
             
             if (window.githubAPIManager && window.githubAPIManager.initialized) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
-            } else {
-                console.warn('⚠️ GitHubAPIManager가 아직 초기화되지 않았습니다');
             }
         });
     }
@@ -84,12 +81,9 @@ document.addEventListener('DOMContentLoaded', function() {
         filterSelect.addEventListener('change', function() {
             const filterBy = this.value;
             const sortBy = document.getElementById('sort-select')?.value || 'accuracy';
-            console.log('🔍 필터 변경:', filterBy);
             
             if (window.githubAPIManager && window.githubAPIManager.initialized) {
                 window.githubAPIManager.renderAlgorithmCards('algorithm-grid', sortBy, filterBy);
-            } else {
-                console.warn('⚠️ GitHubAPIManager가 아직 초기화되지 않았습니다');
             }
         });
     }
@@ -98,8 +92,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshBtn = document.getElementById('refresh-btn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async function() {
-            console.log('🔄 새로고침 시작');
-            
             // 버튼 비활성화
             this.disabled = true;
             this.innerHTML = '<span class="btn-icon">⏳</span><span class="btn-text">로딩 중...</span>';
@@ -122,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error('GitHubAPIManager를 찾을 수 없습니다');
                 }
             } catch (error) {
-                console.error('❌ 새로고침 실패:', error);
+                console.error('새로고침 실패:', error);
                 if (window.showToast) {
                     window.showToast('새로고침 중 오류가 발생했습니다', 'error');
                 }
@@ -133,22 +125,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
-    // ===== 초기화 확인 =====
-    console.log('📊 페이지 상태:', {
-        githubAPIManager: window.githubAPIManager ? '✅' : '❌',
-        initialized: window.githubAPIManager?.initialized ? '✅' : '❌',
-        algorithmCount: window.githubAPIManager ? Object.keys(window.githubAPIManager.algorithms).length : 0
-    });
 });
 
-// ===== 전역 번호 저장 함수 (하위 호환성) =====
-// window.saveNumbers가 main.js에서 정의되어 있지만, 
-// 만약을 대비한 폴백 함수
+// ===== 전역 번호 저장 함수 폴백 =====
 if (typeof window.saveNumbers === 'undefined') {
     window.saveNumbers = function(numbers, algorithmName) {
-        console.log('💾 번호 저장 (폴백 함수):', numbers, algorithmName);
-        
         try {
             // 번호 유효성 검사
             if (!Array.isArray(numbers) || numbers.length !== 6) {
@@ -177,18 +158,16 @@ if (typeof window.saveNumbers === 'undefined') {
             // 저장
             localStorage.setItem('savedNumbers', JSON.stringify(trimmed));
             
-            console.log('✅ 번호 저장 완료. 총 개수:', trimmed.length);
-            
             // 성공 메시지
             if (window.showToast) {
                 window.showToast('번호가 저장되었습니다!', 'success');
             } else {
-                alert('번호가 저장되었습니다! 저장된 번호 페이지에서 확인할 수 있습니다.');
+                alert('번호가 저장되었습니다!');
             }
             
             return true;
         } catch (error) {
-            console.error('❌ 저장 실패:', error);
+            console.error('저장 실패:', error);
             
             if (window.showToast) {
                 window.showToast('번호 저장에 실패했습니다', 'error');
@@ -199,8 +178,6 @@ if (typeof window.saveNumbers === 'undefined') {
             return false;
         }
     };
-    
-    console.log('📦 saveNumbers 폴백 함수 등록됨');
 }
 </script>
 {% endblock %}
