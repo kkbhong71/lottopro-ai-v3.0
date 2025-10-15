@@ -117,11 +117,11 @@ class LottoProAI:
         try:
             # 여러 가능한 경로 시도
             possible_paths = [
-                self.data_path / 'new_1191.csv',           # data/new_1191.csv
-                Path('data/new_1191.csv'),                 # 상대 경로
-                Path('new_1191.csv'),                      # 루트
-                Path('/opt/render/project/src/data/new_1191.csv'),  # Render 절대 경로
-                Path('/opt/render/project/src/new_1191.csv')        # Render 루트
+                self.data_path / 'new_1193.csv',           # data/new_1193.csv
+                Path('data/new_1193.csv'),                 # 상대 경로
+                Path('new_1193.csv'),                      # 루트
+                Path('/opt/render/project/src/data/new_1193.csv'),  # Render 절대 경로
+                Path('/opt/render/project/src/new_1193.csv')        # Render 루트
             ]
             
             csv_path = None
@@ -138,7 +138,7 @@ class LottoProAI:
                 logger.error(f"❌ CSV 파일을 찾을 수 없음. 시도한 경로:")
                 for path in possible_paths:
                     logger.error(f"  - {path}")
-                raise FileNotFoundError("new_1191.csv 파일을 찾을 수 없습니다")
+                raise FileNotFoundError("new_1193.csv 파일을 찾을 수 없습니다")
             
             # CSV 파일 로드
             self.lotto_df = pd.read_csv(csv_path)
@@ -152,7 +152,7 @@ class LottoProAI:
             logger.info(f"  - 컬럼: {actual_columns}")
             
             if actual_columns == expected_columns:
-                logger.info(f"✅ 컬럼 형식 정상 (최신 회차: 1191)")
+                logger.info(f"✅ 컬럼 형식 정상 (최신 회차: 1193)")
             else:
                 logger.warning(f"⚠️ 컬럼명이 예상과 다름:")
                 logger.warning(f"  예상: {expected_columns}")
@@ -399,7 +399,7 @@ class LottoProAI:
                 'algorithm': prediction_data['algorithm'],
                 'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
-                'round_predicted': prediction_data.get('round_predicted', 1191),
+                'round_predicted': prediction_data.get('round_predicted', 1193),
                 'is_checked': False,
                 'match_result': None,
                 'cached': prediction_data.get('cached', False)
@@ -527,7 +527,7 @@ def index():
     return render_template('index.html', 
                          algorithm_count=algorithm_count,
                          data_count=data_count,
-                         latest_round=1191,
+                         latest_round=1193,
                          version="3.0")
 
 @app.route('/algorithms')
@@ -766,7 +766,7 @@ def get_lottery_data():
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
             'total_records': len(lotto_ai.lotto_df),
-            'latest_round': 1191
+            'latest_round': 1193
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
@@ -786,7 +786,7 @@ def get_all_algorithm_info():
             'status': 'success',
             'info': unique_algorithms,
             'count': len(unique_algorithms),
-            'latest_round': 1191,
+            'latest_round': 1193,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -816,7 +816,7 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
         'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
-        'latest_round': 1191,
+        'latest_round': 1193,
         'version': '3.0',
         'session_active': 'user_id' in session
     })
@@ -862,6 +862,6 @@ if __name__ == '__main__':
     logger.info(f"Debug mode: {debug_mode}")
     logger.info(f"Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
     logger.info(f"Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
-    logger.info(f"Latest round: 1191")
+    logger.info(f"Latest round: 1193")
     
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
