@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'lottopro-ai-v3-secret-key-2025')
 app.config['JSON_AS_ASCII'] = False
 
-# 로깅 설정
+# 로깅 설정 - 더 상세한 정보 포함
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -38,6 +38,15 @@ GITHUB_API_BASE = f'https://api.github.com/repos/{GITHUB_REPO}'
 ALGORITHM_CACHE = {}
 LAST_EXECUTION = {}
 EXECUTION_LIMIT = 60
+
+# 🆕 데이터 흐름 검증을 위한 전역 변수
+DATA_FLOW_STATS = {
+    'csv_load_time': None,
+    'csv_load_success': False,
+    'total_records': 0,
+    'last_algorithm_execution': None,
+    'data_validation_results': {}
+}
 
 def rate_limit(limit_seconds=60):
     """API 호출 제한 데코레이터"""
@@ -77,6 +86,16 @@ class LottoProAI:
         self.cache_path = self.data_path / 'cache'
         self.cache_path.mkdir(exist_ok=True)
         
+        # 🆕 데이터 검증 결과 저장
+        self.data_validation = {
+            'csv_found': False,
+            'csv_path': None,
+            'load_timestamp': None,
+            'records_loaded': 0,
+            'columns_verified': False,
+            'data_quality': {}
+        }
+        
         self.load_algorithm_info()
         self.load_lotto_data()
         
@@ -87,9 +106,9 @@ class LottoProAI:
                 self.algorithm_info = json.load(f)
             
             if 'algorithms' in self.algorithm_info:
-                logger.info(f"Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
+                logger.info(f"✅ Loaded {len(self.algorithm_info.get('algorithms', {}))} algorithms")
             else:
-                logger.warning("Converting old algorithm info format to new format")
+                logger.warning("⚠️ Converting old algorithm info format to new format")
                 algorithms_dict = {}
                 for key, value in self.algorithm_info.items():
                     if isinstance(value, dict) and 'name' in value:
@@ -101,10 +120,10 @@ class LottoProAI:
                     "categories": {},
                     "difficulty_levels": {}
                 }
-                logger.info(f"Converted {len(algorithms_dict)} algorithms")
+                logger.info(f"✅ Converted {len(algorithms_dict)} algorithms")
                 
         except FileNotFoundError:
-            logger.warning("Algorithm info file not found, using default")
+            logger.warning("⚠️ Algorithm info file not found, using default")
             self.algorithm_info = {
                 "version": "3.0",
                 "algorithms": {},
@@ -113,15 +132,15 @@ class LottoProAI:
             }
             
     def load_lotto_data(self):
-        """로또 당첨번호 데이터 로드 - 개선된 버전"""
+        """로또 당첨번호 데이터 로드 - 🆕 검증 기능 강화"""
         try:
             # 여러 가능한 경로 시도
             possible_paths = [
-                self.data_path / 'new_1193.csv',           # data/new_1193.csv
-                Path('data/new_1193.csv'),                 # 상대 경로
-                Path('new_1193.csv'),                      # 루트
-                Path('/opt/render/project/src/data/new_1193.csv'),  # Render 절대 경로
-                Path('/opt/render/project/src/new_1193.csv')        # Render 루트
+                self.data_path / 'new_1193.csv',
+                Path('data/new_1193.csv'),
+                Path('new_1193.csv'),
+                Path('/opt/render/project/src/data/new_1193.csv'),
+                Path('/opt/render/project/src/new_1193.csv')
             ]
             
             csv_path = None
@@ -132,52 +151,117 @@ class LottoProAI:
                 if path.exists():
                     csv_path = path
                     logger.info(f"✅ CSV 파일 발견: {path}")
+                    self.data_validation['csv_found'] = True
+                    self.data_validation['csv_path'] = str(path)
                     break
             
             if csv_path is None:
                 logger.error(f"❌ CSV 파일을 찾을 수 없음. 시도한 경로:")
                 for path in possible_paths:
-                    logger.error(f"  - {path}")
+                    logger.error(f"  - {path} (exists: {path.exists()})")
                 raise FileNotFoundError("new_1193.csv 파일을 찾을 수 없습니다")
             
             # CSV 파일 로드
+            load_start_time = time.time()
             self.lotto_df = pd.read_csv(csv_path)
+            load_duration = time.time() - load_start_time
             
-            # 데이터 검증
+            # 🆕 검증 1: 기본 정보
+            logger.info("=" * 70)
+            logger.info("📊 CSV 데이터 로드 검증")
+            logger.info("=" * 70)
+            logger.info(f"✅ 로드 시간: {load_duration:.3f}초")
+            logger.info(f"✅ 총 회차: {len(self.lotto_df)}")
+            logger.info(f"✅ 원본 컬럼: {list(self.lotto_df.columns)}")
+            
+            self.data_validation['load_timestamp'] = datetime.now().isoformat()
+            self.data_validation['records_loaded'] = len(self.lotto_df)
+            self.data_validation['load_duration'] = load_duration
+            
+            # 🆕 검증 2: 샘플 데이터
+            if not self.lotto_df.empty:
+                first_row = self.lotto_df.iloc[0].to_dict()
+                last_row = self.lotto_df.iloc[-1].to_dict()
+                logger.info(f"🎲 첫 회차: {first_row}")
+                logger.info(f"🎲 최신 회차: {last_row}")
+                
+                self.data_validation['first_record'] = first_row
+                self.data_validation['latest_record'] = last_row
+            
+            # 🆕 검증 3: 데이터 품질 검사
             expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
             actual_columns = list(self.lotto_df.columns)
             
-            logger.info(f"📊 데이터 로드 완료:")
-            logger.info(f"  - 총 회차: {len(self.lotto_df)}")
-            logger.info(f"  - 컬럼: {actual_columns}")
-            
+            logger.info(f"📋 컬럼 검증:")
             if actual_columns == expected_columns:
-                logger.info(f"✅ 컬럼 형식 정상 (최신 회차: 1193)")
+                logger.info(f"  ✅ 컬럼 형식 정상")
+                self.data_validation['columns_verified'] = True
             else:
-                logger.warning(f"⚠️ 컬럼명이 예상과 다름:")
-                logger.warning(f"  예상: {expected_columns}")
-                logger.warning(f"  실제: {actual_columns}")
+                logger.warning(f"  ⚠️ 컬럼명 불일치:")
+                logger.warning(f"    예상: {expected_columns}")
+                logger.warning(f"    실제: {actual_columns}")
+                self.data_validation['columns_verified'] = False
             
-            # 첫 번째와 마지막 행 샘플 출력
-            if not self.lotto_df.empty:
-                logger.info(f"🎲 첫 번째 회차: {self.lotto_df.iloc[0].to_dict()}")
-                logger.info(f"🎲 마지막 회차: {self.lotto_df.iloc[-1].to_dict()}")
+            # 🆕 검증 4: 번호 컬럼 품질
+            number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+            quality_report = {}
             
-            # 데이터 무결성 검증
-            if len(self.lotto_df) < 100:
-                logger.warning(f"⚠️ 데이터가 부족할 수 있음: {len(self.lotto_df)}회차")
+            logger.info(f"🔢 번호 데이터 품질:")
+            for col in number_cols:
+                if col in self.lotto_df.columns:
+                    null_count = self.lotto_df[col].isnull().sum()
+                    invalid_count = ((self.lotto_df[col] < 1) | (self.lotto_df[col] > 45)).sum()
+                    valid_count = len(self.lotto_df) - null_count - invalid_count
+                    
+                    quality_report[col] = {
+                        'total': len(self.lotto_df),
+                        'valid': int(valid_count),
+                        'null': int(null_count),
+                        'out_of_range': int(invalid_count),
+                        'quality_percentage': round(valid_count / len(self.lotto_df) * 100, 2)
+                    }
+                    
+                    logger.info(f"  - {col}: 유효={valid_count}, NULL={null_count}, 범위외={invalid_count} "
+                              f"({quality_report[col]['quality_percentage']}% ✅)")
+                else:
+                    logger.warning(f"  - {col}: ❌ 컬럼 없음!")
+                    quality_report[col] = {'error': 'column_not_found'}
             
-            logger.info(f"✅ 로또 데이터 로드 성공 - {len(self.lotto_df)}회차")
+            self.data_validation['data_quality'] = quality_report
+            
+            # 🆕 검증 5: 통계 요약
+            if all(col in self.lotto_df.columns for col in number_cols):
+                logger.info(f"📈 데이터 통계:")
+                for col in number_cols:
+                    stats = self.lotto_df[col].describe()
+                    logger.info(f"  - {col}: min={stats['min']}, max={stats['max']}, "
+                              f"mean={stats['mean']:.2f}, std={stats['std']:.2f}")
+            
+            logger.info("=" * 70)
+            logger.info(f"✅ 로또 데이터 로드 완료 - {len(self.lotto_df)}회차")
+            logger.info("=" * 70)
+            
+            # 🆕 전역 통계 업데이트
+            DATA_FLOW_STATS['csv_load_time'] = datetime.now().isoformat()
+            DATA_FLOW_STATS['csv_load_success'] = True
+            DATA_FLOW_STATS['total_records'] = len(self.lotto_df)
+            DATA_FLOW_STATS['data_validation_results'] = quality_report
                 
         except FileNotFoundError as e:
             logger.error(f"❌ CSV 파일 없음: {str(e)}")
             self.lotto_df = pd.DataFrame()
+            self.data_validation['error'] = str(e)
+            DATA_FLOW_STATS['csv_load_success'] = False
         except pd.errors.EmptyDataError:
             logger.error("❌ CSV 파일이 비어있음")
             self.lotto_df = pd.DataFrame()
+            self.data_validation['error'] = 'empty_csv'
+            DATA_FLOW_STATS['csv_load_success'] = False
         except Exception as e:
             logger.error(f"❌ 데이터 로드 실패: {str(e)}", exc_info=True)
             self.lotto_df = pd.DataFrame()
+            self.data_validation['error'] = str(e)
+            DATA_FLOW_STATS['csv_load_success'] = False
     
     def check_dangerous_code(self, code_content):
         """개선된 보안 검사 - 정규표현식 사용"""
@@ -209,18 +293,28 @@ class LottoProAI:
         return f"{algorithm_id}_{data_hash}"
     
     def execute_github_algorithm(self, algorithm_id, user_numbers=None):
-        """GitHub에서 알고리즘 코드를 안전하게 실행"""
+        """GitHub에서 알고리즘 코드를 안전하게 실행 - 🆕 검증 기능 강화"""
+        execution_log = {
+            'algorithm_id': algorithm_id,
+            'start_time': datetime.now().isoformat(),
+            'user_numbers': user_numbers,
+            'data_transfer_verified': False,
+            'execution_success': False
+        }
+        
         try:
             if algorithm_id not in self.algorithm_info.get('algorithms', {}):
                 raise Exception(f"Algorithm '{algorithm_id}' not found")
             
-            # 데이터 로드 확인
+            # 🆕 검증 1: 데이터 로드 상태 확인
             if self.lotto_df.empty:
                 logger.error("❌ 로또 데이터가 비어있음 - 알고리즘 실행 불가")
+                execution_log['error'] = 'empty_dataframe'
                 raise Exception("로또 데이터를 로드할 수 없습니다")
             
             algorithm_info = self.algorithm_info['algorithms'][algorithm_id]
             
+            # 캐시 확인
             if not user_numbers:
                 cache_key = self.get_algorithm_cache_key(algorithm_id)
                 cache_file = self.cache_path / f"{cache_key}.json"
@@ -231,9 +325,10 @@ class LottoProAI:
                         with open(cache_file, 'r', encoding='utf-8') as f:
                             cached_result = json.load(f)
                             cached_result['cached'] = True
-                            logger.info(f"Cached result for {algorithm_id}")
+                            logger.info(f"✅ Cached result for {algorithm_id}")
                             return cached_result
             
+            # GitHub에서 알고리즘 다운로드
             algorithm_path = algorithm_info.get('github_path', f'algorithms/{algorithm_id}.py')
             github_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/main/{algorithm_path}'
             
@@ -241,7 +336,7 @@ class LottoProAI:
             if GITHUB_TOKEN:
                 headers['Authorization'] = f'token {GITHUB_TOKEN}'
             
-            logger.info(f"Downloading algorithm from: {github_url}")
+            logger.info(f"📥 Downloading algorithm from: {github_url}")
             response = requests.get(github_url, headers=headers, timeout=30)
             
             if response.status_code != 200:
@@ -249,12 +344,61 @@ class LottoProAI:
             
             code_content = response.text
             
+            # 보안 검사
             dangerous_issues = self.check_dangerous_code(code_content)
             if dangerous_issues:
                 logger.warning(f"⚠️ Security check found {len(dangerous_issues)} potential issues in {algorithm_id}")
                 for issue in dangerous_issues:
                     logger.warning(f"  - {issue}")
             
+            # 🆕 검증 2: 데이터 전달 전 로깅
+            logger.info("=" * 70)
+            logger.info(f"🚀 알고리즘 실행 준비: {algorithm_id}")
+            logger.info("=" * 70)
+            logger.info(f"📊 전달할 데이터:")
+            logger.info(f"  - 회차 수: {len(self.lotto_df)}")
+            logger.info(f"  - 컬럼: {list(self.lotto_df.columns)}")
+            
+            if not self.lotto_df.empty:
+                latest_numbers = self.lotto_df.iloc[-1][['num1', 'num2', 'num3', 'num4', 'num5', 'num6']].tolist()
+                logger.info(f"  - 최신 회차 샘플: {latest_numbers}")
+                execution_log['latest_sample'] = latest_numbers
+            
+            execution_log['data_rows'] = len(self.lotto_df)
+            execution_log['data_columns'] = list(self.lotto_df.columns)
+            
+            # 🆕 검증 3: 디버깅 코드 주입
+            debug_code = """
+# ===== 데이터 수신 검증 코드 =====
+import sys
+_verification_passed = False
+
+try:
+    if 'lotto_data' in globals():
+        print(f"✅ [VERIFY] lotto_data 수신 성공: {len(lotto_data)}회차")
+        print(f"✅ [VERIFY] 컬럼: {list(lotto_data.columns)}")
+        
+        if not lotto_data.empty:
+            sample_row = lotto_data.iloc[-1]
+            sample_numbers = [sample_row['num1'], sample_row['num2'], sample_row['num3'], 
+                            sample_row['num4'], sample_row['num5'], sample_row['num6']]
+            print(f"✅ [VERIFY] 최신 회차 샘플: {sample_numbers}")
+            _verification_passed = True
+        else:
+            print("❌ [VERIFY] lotto_data가 비어있음!")
+    else:
+        print("❌ [VERIFY] lotto_data가 globals()에 없음!")
+except Exception as e:
+    print(f"❌ [VERIFY] 검증 중 오류: {str(e)}")
+
+if not _verification_passed:
+    print("⚠️ [VERIFY] 데이터 검증 실패 - fallback 모드로 전환 가능")
+
+# ===== 검증 코드 끝 =====
+
+"""
+            
+            # Safe globals 구성
             original_import = builtins.__import__
             
             def safe_import(name, *args, **kwargs):
@@ -309,18 +453,30 @@ class LottoProAI:
                 '__name__': '__main__',
             }
             
-            logger.info(f"Executing algorithm: {algorithm_id} (데이터: {len(self.lotto_df)}회차)")
+            execution_log['data_transfer_verified'] = True
+            
+            # 🆕 디버깅 코드 + 알고리즘 코드 실행
+            full_code = debug_code + code_content
+            
+            logger.info(f"⚙️ Executing algorithm: {algorithm_id} (데이터: {len(self.lotto_df)}회차)")
+            
             try:
-                exec(code_content, safe_globals)
+                exec(full_code, safe_globals)
+                execution_log['code_execution_success'] = True
             except SyntaxError as e:
+                execution_log['syntax_error'] = str(e)
                 raise Exception(f"Syntax error in algorithm code: {str(e)}")
             except Exception as e:
+                execution_log['runtime_error'] = str(e)
                 raise Exception(f"Runtime error: {str(e)}")
             
+            # 결과 함수 호출
             result = None
             for func_name in ['predict_numbers', 'predict', 'generate_numbers', 'main']:
                 if func_name in safe_globals:
-                    logger.info(f"Calling function: {func_name}")
+                    logger.info(f"✅ Calling function: {func_name}")
+                    execution_log['function_called'] = func_name
+                    
                     if user_numbers:
                         result = safe_globals[func_name](user_numbers)
                     else:
@@ -330,6 +486,7 @@ class LottoProAI:
             if result is None:
                 raise Exception("No prediction function found (tried: predict_numbers, predict, generate_numbers, main)")
             
+            # 결과 검증
             if not isinstance(result, (list, tuple)) or len(result) != 6:
                 raise Exception(f"Algorithm must return exactly 6 numbers, got {len(result) if isinstance(result, (list, tuple)) else 'non-list'}")
             
@@ -339,6 +496,9 @@ class LottoProAI:
             if len(set(result)) != 6:
                 raise Exception("All numbers must be unique")
             
+            execution_log['execution_success'] = True
+            execution_log['result'] = list(map(int, result))
+            
             prediction_result = {
                 'status': 'success',
                 'numbers': sorted(list(map(int, result))),
@@ -346,30 +506,59 @@ class LottoProAI:
                 'algorithm_name': algorithm_info.get('name', algorithm_id),
                 'accuracy_rate': algorithm_info.get('accuracy_rate', algorithm_info.get('accuracy', 0)),
                 'timestamp': datetime.now().isoformat(),
-                'cached': False
+                'cached': False,
+                'execution_log': execution_log  # 🆕 실행 로그 포함
             }
             
+            # 캐시 저장
             if not user_numbers:
                 cache_file = self.cache_path / f"{self.get_algorithm_cache_key(algorithm_id)}.json"
                 with open(cache_file, 'w', encoding='utf-8') as f:
                     json.dump(prediction_result, f, ensure_ascii=False, indent=2)
-                logger.info(f"Cached result for {algorithm_id}")
+                logger.info(f"💾 Cached result for {algorithm_id}")
+            
+            # 🆕 전역 통계 업데이트
+            DATA_FLOW_STATS['last_algorithm_execution'] = {
+                'algorithm_id': algorithm_id,
+                'timestamp': datetime.now().isoformat(),
+                'success': True
+            }
+            
+            logger.info("=" * 70)
+            logger.info(f"✅ 알고리즘 실행 완료: {prediction_result['numbers']}")
+            logger.info("=" * 70)
             
             return prediction_result
                 
         except requests.RequestException as e:
-            logger.error(f"Network error downloading algorithm: {str(e)}")
+            logger.error(f"❌ Network error downloading algorithm: {str(e)}")
+            execution_log['error'] = f'network_error: {str(e)}'
+            DATA_FLOW_STATS['last_algorithm_execution'] = {
+                'algorithm_id': algorithm_id,
+                'timestamp': datetime.now().isoformat(),
+                'success': False,
+                'error': str(e)
+            }
             return {
                 'status': 'error',
                 'message': f'네트워크 오류: {str(e)}',
-                'algorithm': algorithm_id
+                'algorithm': algorithm_id,
+                'execution_log': execution_log
             }
         except Exception as e:
-            logger.error(f"Algorithm execution failed: {str(e)}", exc_info=True)
+            logger.error(f"❌ Algorithm execution failed: {str(e)}", exc_info=True)
+            execution_log['error'] = str(e)
+            DATA_FLOW_STATS['last_algorithm_execution'] = {
+                'algorithm_id': algorithm_id,
+                'timestamp': datetime.now().isoformat(),
+                'success': False,
+                'error': str(e)
+            }
             return {
                 'status': 'error',
                 'message': str(e),
-                'algorithm': algorithm_id
+                'algorithm': algorithm_id,
+                'execution_log': execution_log
             }
     
     def save_user_prediction(self, user_id, prediction_data):
@@ -415,12 +604,12 @@ class LottoProAI:
             with open(self.user_data_path, 'w', encoding='utf-8') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"Prediction saved for user {user_id}: {prediction_entry['id']}")
+            logger.info(f"💾 Prediction saved for user {user_id}: {prediction_entry['id']}")
             
             return {'status': 'success', 'prediction_id': prediction_entry['id']}
             
         except Exception as e:
-            logger.error(f"Failed to save prediction: {str(e)}")
+            logger.error(f"❌ Failed to save prediction: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
     def delete_user_prediction(self, user_id, prediction_id):
@@ -448,12 +637,12 @@ class LottoProAI:
             with open(self.user_data_path, 'w', encoding='utf-8') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"Prediction {prediction_id} deleted for user {user_id}")
+            logger.info(f"🗑️ Prediction {prediction_id} deleted for user {user_id}")
             
             return {'status': 'success', 'message': 'Prediction deleted'}
             
         except Exception as e:
-            logger.error(f"Failed to delete prediction: {str(e)}")
+            logger.error(f"❌ Failed to delete prediction: {str(e)}")
             return {'status': 'error', 'message': str(e)}
     
     def compare_with_winning_numbers(self, user_id, prediction_id, winning_numbers):
@@ -504,7 +693,7 @@ class LottoProAI:
             with open(self.user_data_path, 'w', encoding='utf-8') as f:
                 json.dump(user_data, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"Comparison completed for prediction {prediction_id}: {matches} matches")
+            logger.info(f"🎯 Comparison completed for prediction {prediction_id}: {matches} matches")
             
             return {
                 'status': 'success',
@@ -513,7 +702,7 @@ class LottoProAI:
             }
             
         except Exception as e:
-            logger.error(f"Comparison failed: {str(e)}")
+            logger.error(f"❌ Comparison failed: {str(e)}")
             return {'status': 'error', 'message': str(e)}
 
 lotto_ai = LottoProAI()
@@ -604,7 +793,7 @@ def predict_numbers():
         return jsonify(result)
         
     except Exception as e:
-        logger.error(f"Predict API error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Predict API error: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
             'message': f'Internal server error: {str(e)}'
@@ -636,7 +825,7 @@ def save_prediction():
             return jsonify(result), 500
             
     except Exception as e:
-        logger.error(f"Save prediction error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Save prediction error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/delete-prediction', methods=['POST'])
@@ -660,7 +849,7 @@ def delete_prediction():
             return jsonify(result), 404
             
     except Exception as e:
-        logger.error(f"Delete prediction error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Delete prediction error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/compare-numbers', methods=['POST'])
@@ -692,7 +881,7 @@ def compare_numbers():
             return jsonify(result), 404
             
     except Exception as e:
-        logger.error(f"Compare numbers error: {str(e)}", exc_info=True)
+        logger.error(f"❌ Compare numbers error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/user-predictions')
@@ -725,7 +914,7 @@ def get_user_predictions():
                 })
                 return jsonify(user_info)
     except Exception as e:
-        logger.error(f"Failed to load user predictions: {str(e)}")
+        logger.error(f"❌ Failed to load user predictions: {str(e)}")
     
     return jsonify({
         'predictions': [], 
@@ -790,7 +979,7 @@ def get_all_algorithm_info():
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
-        logger.error(f"Failed to get algorithm info: {str(e)}")
+        logger.error(f"❌ Failed to get algorithm info: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': str(e)
@@ -808,18 +997,172 @@ def get_algorithm_info(algorithm_id):
         'algorithm': algorithms[algorithm_id]
     })
 
+# 🆕 ===== 검증용 API 엔드포인트 =====
+
+@app.route('/api/debug/data-flow')
+def debug_data_flow():
+    """🆕 데이터 흐름 디버깅 API - 전체 파이프라인 검증"""
+    try:
+        result = {
+            'timestamp': datetime.now().isoformat(),
+            'version': '3.0',
+            'steps': []
+        }
+        
+        # Step 1: CSV 로드 상태
+        step1 = {
+            'step': 1,
+            'name': 'CSV 파일 로드',
+            'status': 'success' if not lotto_ai.lotto_df.empty else 'failed',
+            'data_count': len(lotto_ai.lotto_df),
+            'columns': list(lotto_ai.lotto_df.columns) if not lotto_ai.lotto_df.empty else [],
+            'validation': lotto_ai.data_validation
+        }
+        
+        if not lotto_ai.lotto_df.empty:
+            step1['first_record'] = lotto_ai.lotto_df.iloc[0].to_dict()
+            step1['latest_record'] = lotto_ai.lotto_df.iloc[-1].to_dict()
+        
+        result['steps'].append(step1)
+        
+        # Step 2: 데이터 품질
+        if not lotto_ai.lotto_df.empty:
+            number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
+            quality_check = {}
+            
+            for col in number_cols:
+                if col in lotto_ai.lotto_df.columns:
+                    quality_check[col] = {
+                        'null_count': int(lotto_ai.lotto_df[col].isnull().sum()),
+                        'valid_range': int(((lotto_ai.lotto_df[col] >= 1) & (lotto_ai.lotto_df[col] <= 45)).sum()),
+                        'total': len(lotto_ai.lotto_df),
+                        'quality_percentage': round(
+                            ((lotto_ai.lotto_df[col] >= 1) & (lotto_ai.lotto_df[col] <= 45)).sum() / len(lotto_ai.lotto_df) * 100, 
+                            2
+                        )
+                    }
+            
+            step2 = {
+                'step': 2,
+                'name': '데이터 품질 확인',
+                'status': 'success',
+                'quality_check': quality_check
+            }
+            result['steps'].append(step2)
+        
+        # Step 3: 알고리즘 로드 상태
+        step3 = {
+            'step': 3,
+            'name': '알고리즘 로드 상태',
+            'status': 'success',
+            'algorithm_count': len(lotto_ai.algorithm_info.get('algorithms', {})),
+            'algorithms': list(lotto_ai.algorithm_info.get('algorithms', {}).keys())
+        }
+        result['steps'].append(step3)
+        
+        # Step 4: 전역 통계
+        step4 = {
+            'step': 4,
+            'name': '전역 데이터 흐름 통계',
+            'status': 'success',
+            'global_stats': DATA_FLOW_STATS
+        }
+        result['steps'].append(step4)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ Debug API error: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/debug/verify-csv')
+def verify_csv():
+    """🆕 CSV 파일 직접 검증 API"""
+    try:
+        verification = {
+            'timestamp': datetime.now().isoformat(),
+            'csv_path_tested': [],
+            'csv_found': False,
+            'csv_path': None,
+            'file_info': {}
+        }
+        
+        possible_paths = [
+            Path('data/new_1193.csv'),
+            Path('new_1193.csv'),
+            Path('/opt/render/project/src/data/new_1193.csv'),
+            Path('/opt/render/project/src/new_1193.csv')
+        ]
+        
+        for path in possible_paths:
+            path_info = {
+                'path': str(path),
+                'exists': path.exists(),
+                'is_file': path.is_file() if path.exists() else False,
+                'size': path.stat().st_size if path.exists() else 0
+            }
+            
+            verification['csv_path_tested'].append(path_info)
+            
+            if path.exists():
+                verification['csv_found'] = True
+                verification['csv_path'] = str(path)
+                
+                # 파일 상세 정보
+                stat = path.stat()
+                verification['file_info'] = {
+                    'size_bytes': stat.st_size,
+                    'size_kb': round(stat.st_size / 1024, 2),
+                    'modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    'readable': os.access(path, os.R_OK)
+                }
+                
+                # 간단한 로드 테스트
+                try:
+                    test_df = pd.read_csv(path, nrows=5)
+                    verification['load_test'] = {
+                        'success': True,
+                        'sample_rows': len(test_df),
+                        'columns': list(test_df.columns),
+                        'first_row': test_df.iloc[0].to_dict() if not test_df.empty else {}
+                    }
+                except Exception as load_error:
+                    verification['load_test'] = {
+                        'success': False,
+                        'error': str(load_error)
+                    }
+                
+                break
+        
+        return jsonify(verification)
+        
+    except Exception as e:
+        logger.error(f"❌ CSV Verify error: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 @app.route('/api/health')
 def health_check():
-    """서비스 상태 확인"""
+    """🔄 서비스 상태 확인 - 검증 정보 강화"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
         'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
+        'csv_load_success': not lotto_ai.lotto_df.empty,
+        'csv_validation': lotto_ai.data_validation,
         'latest_round': 1193,
         'version': '3.0',
-        'session_active': 'user_id' in session
+        'session_active': 'user_id' in session,
+        'data_flow_stats': DATA_FLOW_STATS
     })
+
+# 🆕 ===== 검증용 API 엔드포인트 끝 =====
 
 @app.errorhandler(404)
 def not_found(error):
@@ -835,7 +1178,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal server error: {str(error)}", exc_info=True)
+    logger.error(f"❌ Internal server error: {str(error)}", exc_info=True)
     if request.path.startswith('/api/'):
         return jsonify({
             'status': 'error',
@@ -858,10 +1201,24 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
-    logger.info(f"Starting LottoPro-AI v3.0 server on port {port}")
-    logger.info(f"Debug mode: {debug_mode}")
-    logger.info(f"Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
-    logger.info(f"Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
-    logger.info(f"Latest round: 1193")
+    logger.info("=" * 70)
+    logger.info(f"🚀 Starting LottoPro-AI v3.0 server on port {port}")
+    logger.info("=" * 70)
+    logger.info(f"📝 Debug mode: {debug_mode}")
+    logger.info(f"🤖 Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
+    logger.info(f"📊 Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
+    logger.info(f"🎯 Latest round: 1193")
+    logger.info(f"✅ CSV load status: {'SUCCESS' if not lotto_ai.lotto_df.empty else 'FAILED'}")
+    
+    if not lotto_ai.lotto_df.empty:
+        logger.info(f"📂 CSV path: {lotto_ai.data_validation.get('csv_path', 'Unknown')}")
+        logger.info(f"🔢 Data quality: {len([k for k, v in lotto_ai.data_validation.get('data_quality', {}).items() if v.get('quality_percentage', 0) > 99])} / 6 columns perfect")
+    
+    logger.info("=" * 70)
+    logger.info("🔍 Debug APIs available:")
+    logger.info("  - GET /api/debug/data-flow  : 전체 데이터 흐름 검증")
+    logger.info("  - GET /api/debug/verify-csv : CSV 파일 직접 검증")
+    logger.info("  - GET /api/health           : 서비스 상태 확인 (검증 정보 포함)")
+    logger.info("=" * 70)
     
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
