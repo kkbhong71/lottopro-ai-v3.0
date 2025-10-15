@@ -527,7 +527,7 @@ class PredictionManager {
                 timestamp: this.lastPrediction.timestamp,
                 method: this.lastPrediction.method,
                 preferences: this.lastPrediction.preferences || [],
-                round_predicted: 1191
+                round_predicted: 1193
             };
             
             console.log('📤 서버 전송 데이터:', JSON.stringify(payload, null, 2));
