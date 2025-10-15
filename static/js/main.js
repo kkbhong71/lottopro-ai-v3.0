@@ -256,7 +256,7 @@ class LottoProApp {
                 algorithm: algorithmId,
                 algorithm_name: algorithmName,
                 timestamp: new Date().toISOString(),
-                round_predicted: 1191
+                round_predicted: 1193
             };
             
             console.log('📤 서버 전송 데이터:', JSON.stringify(payload, null, 2));
