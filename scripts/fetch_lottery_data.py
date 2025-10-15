@@ -17,7 +17,7 @@ def fetch_latest_lottery_data():
     base_url = "https://www.dhlottery.co.kr/common.do?method=getLottoNumber"
     
     # 기존 데이터 로드
-    data_file = Path('data/new_1190.csv')
+    data_file = Path('data/new_1193.csv')
     if data_file.exists():
         existing_df = pd.read_csv(data_file, encoding='utf-8')
         last_round = existing_df['round'].max()
