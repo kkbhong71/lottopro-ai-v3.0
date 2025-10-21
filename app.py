@@ -13,7 +13,7 @@ import hashlib
 import time
 from functools import wraps
 import importlib.util
-import sys
+# import sys  # ❌ 제거 - safe_import와 충돌 방지
 from collections import Counter
 import builtins
 import re
@@ -389,7 +389,6 @@ class LottoProAI:
             # 검증 3: 디버깅 코드 주입
             debug_code = """
 # ===== 데이터 수신 검증 코드 =====
-import sys
 _verification_passed = False
 
 try:
@@ -417,17 +416,18 @@ if not _verification_passed:
 
 """
             
-            # Safe globals 구성
+            # Safe globals 구성 - sys 제거됨
             original_import = builtins.__import__
             
             def safe_import(name, *args, **kwargs):
-                """보안을 위해 제한된 모듈만 import 허용"""
+                """보안을 위해 제한된 모듈만 import 허용 - sys 제외"""
                 allowed_modules = {
                     'random', 'math', 'datetime', 'collections', 
                     'itertools', 'functools', 're', 'statistics',
                     'operator', 'bisect', 'heapq', 'array',
                     'pandas', 'numpy', 'pd', 'np',
                     'warnings'
+                    # 'sys' 제거 - 보안상 허용하지 않음
                 }
                 if name in allowed_modules:
                     return original_import(name, *args, **kwargs)
