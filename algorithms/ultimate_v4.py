@@ -8,6 +8,7 @@ Ultimate Lotto Prediction System 4.0 - 웹앱 표준화 버전
 - 65+ 방법론 통합 앙상블 시스템
 - 웹앱 표준 predict_numbers() 인터페이스
 - 안전한 warnings 처리 적용
+- JSON 직렬화 타입 안전성 보장
 """
 
 import pandas as pd
@@ -32,6 +33,30 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
+def convert_to_python_int(value):
+    """numpy 타입을 Python int로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return int(value)
+        elif isinstance(value, (int, float)):
+            return int(value)
+        else:
+            return int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return random.randint(1, 45)
+
+def convert_to_python_float(value):
+    """numpy 타입을 Python float로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return float(value)
+        elif isinstance(value, (int, float)):
+            return float(value)
+        else:
+            return float(value)
+    except (ValueError, TypeError, OverflowError):
+        return 0.0
+
 def predict_numbers():
     """
     웹앱 표준 예측 함수 - Ultimate System 4.0
@@ -44,7 +69,7 @@ def predict_numbers():
     - 베이지안 최적화 (불확실성 최소화)
     
     Returns:
-        list: 6개 로또 번호 [1-45 범위의 정수]
+        list: 6개 로또 번호 [1-45 범위의 Python 정수]
     """
     try:
         # 글로벌 변수에서 데이터 로드
@@ -73,7 +98,7 @@ def predict_numbers():
         return generate_safe_fallback()
 
 def preprocess_and_engineer_features(df):
-    """데이터 전처리 및 65+ 피처 엔지니어링"""
+    """데이터 전처리 및 65+ 피처 엔지니어링 - 타입 안전성 보장"""
     try:
         # 컬럼명 표준화
         df.columns = [col.strip().lower().replace(' ', '_') for col in df.columns]
@@ -84,11 +109,13 @@ def preprocess_and_engineer_features(df):
             mapping = dict(zip(df.columns[:9], standard_cols))
             df = df.rename(columns=mapping)
         
-        # 숫자 변환 및 유효성 검사
+        # 숫자 변환 및 유효성 검사 - 타입 안전성 보장
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
         for col in number_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+                # numpy 타입을 Python int로 변환
+                df[col] = df[col].apply(lambda x: convert_to_python_int(x) if pd.notna(x) else random.randint(1, 45))
         
         df = df.dropna(subset=number_cols)
         
@@ -106,14 +133,23 @@ def preprocess_and_engineer_features(df):
         return df
 
 def create_ultimate_features(df, number_cols):
-    """65+ 방법론을 위한 궁극의 피처 생성"""
+    """65+ 방법론을 위한 궁극의 피처 생성 - 타입 안전성 보장"""
     try:
-        # 기본 통계 피처
-        df['sum_total'] = df[number_cols].sum(axis=1)
-        df['mean_total'] = df[number_cols].mean(axis=1)
-        df['std_total'] = df[number_cols].std(axis=1).fillna(0)
-        df['odd_count'] = df[number_cols].apply(lambda row: sum(x % 2 for x in row), axis=1)
-        df['high_count'] = df[number_cols].apply(lambda row: sum(x >= 23 for x in row), axis=1)
+        # 기본 통계 피처 - Python 타입으로 변환
+        sum_values = df[number_cols].sum(axis=1)
+        df['sum_total'] = sum_values.apply(lambda x: convert_to_python_int(x))
+        
+        mean_values = df[number_cols].mean(axis=1)
+        df['mean_total'] = mean_values.apply(lambda x: convert_to_python_float(x))
+        
+        std_values = df[number_cols].std(axis=1).fillna(0)
+        df['std_total'] = std_values.apply(lambda x: convert_to_python_float(x))
+        
+        odd_counts = df[number_cols].apply(lambda row: sum(x % 2 for x in row), axis=1)
+        df['odd_count'] = odd_counts.apply(lambda x: convert_to_python_int(x))
+        
+        high_counts = df[number_cols].apply(lambda row: sum(x >= 23 for x in row), axis=1)
+        df['high_count'] = high_counts.apply(lambda x: convert_to_python_int(x))
         
         # 고급 AC 시스템 피처
         df = add_enhanced_ac_features(df, number_cols)
@@ -141,14 +177,14 @@ def create_ultimate_features(df, number_cols):
         return df
 
 def add_enhanced_ac_features(df, number_cols):
-    """고급 AC 시스템 피처 - 다차원 차분 분석"""
+    """고급 AC 시스템 피처 - 다차원 차분 분석 - 타입 안전성 보장"""
     try:
         ac_1_values = []
         ac_2_values = []
         weighted_ac_values = []
         
         for _, row in df.iterrows():
-            numbers = sorted([row[col] for col in number_cols if pd.notna(row[col])])
+            numbers = sorted([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
             
             # 1차 AC값 (기본 차분)
             differences_1 = set()
@@ -169,7 +205,7 @@ def add_enhanced_ac_features(df, number_cols):
                 ac_2 = 0
             
             # 가중 AC값
-            weighted_ac = ac_1 * 0.7 + ac_2 * 0.3
+            weighted_ac = convert_to_python_float(ac_1 * 0.7 + ac_2 * 0.3)
             
             ac_1_values.append(ac_1)
             ac_2_values.append(ac_2)
@@ -183,17 +219,17 @@ def add_enhanced_ac_features(df, number_cols):
     except:
         df['enhanced_ac_1'] = 0
         df['enhanced_ac_2'] = 0
-        df['weighted_ac'] = 0
+        df['weighted_ac'] = 0.0
         return df
 
 def add_network_centrality_features(df, number_cols):
-    """네트워크 중심성 피처 - 번호간 동시 출현 분석"""
+    """네트워크 중심성 피처 - 번호간 동시 출현 분석 - 타입 안전성 보장"""
     try:
         # 번호간 동시 출현 빈도 매트릭스 생성
         cooccurrence_matrix = np.zeros((45, 45))
         
         for _, row in df.iterrows():
-            numbers = [row[col] for col in number_cols if pd.notna(row[col])]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])]
             for i in range(len(numbers)):
                 for j in range(i+1, len(numbers)):
                     num1, num2 = numbers[i] - 1, numbers[j] - 1
@@ -204,16 +240,17 @@ def add_network_centrality_features(df, number_cols):
         centrality_scores = []
         
         for _, row in df.iterrows():
-            numbers = [row[col] for col in number_cols if pd.notna(row[col])]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])]
             total_centrality = 0
             
             for num in numbers:
                 idx = num - 1
                 # 해당 번호의 연결 강도 (degree centrality)
-                degree_centrality = np.sum(cooccurrence_matrix[idx]) / len(df)
+                degree_centrality = float(np.sum(cooccurrence_matrix[idx])) / len(df)
                 total_centrality += degree_centrality
             
-            centrality_scores.append(total_centrality / len(numbers))
+            avg_centrality = convert_to_python_float(total_centrality / len(numbers)) if numbers else 0.0
+            centrality_scores.append(avg_centrality)
         
         df['network_centrality'] = centrality_scores
         return df
@@ -223,7 +260,7 @@ def add_network_centrality_features(df, number_cols):
         return df
 
 def add_reinforcement_learning_features(df, number_cols):
-    """강화학습 피처 - Q-Learning 기반 적응 시스템"""
+    """강화학습 피처 - Q-Learning 기반 적응 시스템 - 타입 안전성 보장"""
     try:
         q_values = []
         state_values = []
@@ -232,23 +269,23 @@ def add_reinforcement_learning_features(df, number_cols):
         q_table = np.random.uniform(0, 1, (45, 45))
         
         for i, row in df.iterrows():
-            numbers = [row[col] for col in number_cols if pd.notna(row[col])]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])]
             
             # 상태 정의 (이전 회차와의 관계)
             if i > 0:
-                prev_numbers = [df.iloc[i-1][col] for col in number_cols if pd.notna(df.iloc[i-1][col])]
+                prev_numbers = [convert_to_python_int(df.iloc[i-1][col]) for col in number_cols if pd.notna(df.iloc[i-1][col])]
                 # 상태-행동 쌍의 Q값 계산
                 q_vals = []
                 for num in numbers:
                     for prev_num in prev_numbers:
-                        q_vals.append(q_table[prev_num-1][num-1])
+                        q_vals.append(float(q_table[prev_num-1][num-1]))
                 
-                avg_q_value = np.mean(q_vals) if q_vals else 0.5
+                avg_q_value = convert_to_python_float(np.mean(q_vals)) if q_vals else 0.5
             else:
                 avg_q_value = 0.5
             
             # 상태 가치 (현재 조합의 다양성)
-            state_value = len(set(numbers)) / 6.0
+            state_value = convert_to_python_float(len(set(numbers)) / 6.0)
             
             q_values.append(avg_q_value)
             state_values.append(state_value)
@@ -264,7 +301,7 @@ def add_reinforcement_learning_features(df, number_cols):
         return df
 
 def add_prophet_features(df, number_cols):
-    """Prophet 시계열 피처 - 트렌드 및 계절성 분석"""
+    """Prophet 시계열 피처 - 트렌드 및 계절성 분석 - 타입 안전성 보장"""
     try:
         trend_scores = []
         seasonal_scores = []
@@ -272,14 +309,14 @@ def add_prophet_features(df, number_cols):
         for i in range(len(df)):
             # 트렌드 분석 (장기 vs 단기 평균)
             if i >= 20:
-                long_term = df['sum_total'].iloc[max(0, i-20):i].mean()
-                short_term = df['sum_total'].iloc[max(0, i-5):i].mean()
-                trend = (short_term - long_term) / long_term if long_term != 0 else 0
+                long_term = float(df['sum_total'].iloc[max(0, i-20):i].mean())
+                short_term = float(df['sum_total'].iloc[max(0, i-5):i].mean())
+                trend = convert_to_python_float((short_term - long_term) / long_term if long_term != 0 else 0)
             else:
-                trend = 0
+                trend = 0.0
             
             # 계절성 분석 (주기적 패턴)
-            seasonal = np.sin(2 * np.pi * (i % 52) / 52) * 0.5 + 0.5
+            seasonal = convert_to_python_float(np.sin(2 * np.pi * (i % 52) / 52) * 0.5 + 0.5)
             
             trend_scores.append(trend)
             seasonal_scores.append(seasonal)
@@ -295,7 +332,7 @@ def add_prophet_features(df, number_cols):
         return df
 
 def add_bayesian_optimization_features(df, number_cols):
-    """베이지안 최적화 피처 - 불확실성 기반 최적화"""
+    """베이지안 최적화 피처 - 불확실성 기반 최적화 - 타입 안전성 보장"""
     try:
         bayesian_scores = []
         uncertainty_scores = []
@@ -304,7 +341,7 @@ def add_bayesian_optimization_features(df, number_cols):
         prior_probs = np.ones(45) / 45
         
         for i, row in df.iterrows():
-            numbers = [row[col] for col in number_cols if pd.notna(row[col])]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])]
             
             # 베이지안 업데이트 (간소화)
             if i > 0:
@@ -315,11 +352,11 @@ def add_bayesian_optimization_features(df, number_cols):
                 prior_probs = prior_probs / np.sum(prior_probs)
             
             # 현재 조합의 베이지안 점수
-            bayesian_score = np.mean([prior_probs[num-1] for num in numbers])
+            bayesian_score = convert_to_python_float(np.mean([prior_probs[num-1] for num in numbers]))
             
             # 불확실성 점수 (엔트로피)
             entropy = -np.sum(prior_probs * np.log(prior_probs + 1e-10))
-            uncertainty = entropy / np.log(45)
+            uncertainty = convert_to_python_float(entropy / np.log(45))
             
             bayesian_scores.append(bayesian_score)
             uncertainty_scores.append(uncertainty)
@@ -335,7 +372,7 @@ def add_bayesian_optimization_features(df, number_cols):
         return df
 
 def add_advanced_pattern_features(df, number_cols):
-    """고급 패턴 피처 - 복합 패턴 분석"""
+    """고급 패턴 피처 - 복합 패턴 분석 - 타입 안전성 보장"""
     try:
         # 연속번호 패턴
         consecutive_patterns = []
@@ -345,7 +382,7 @@ def add_advanced_pattern_features(df, number_cols):
         prime_patterns = []
         
         for _, row in df.iterrows():
-            numbers = sorted([row[col] for col in number_cols if pd.notna(row[col])])
+            numbers = sorted([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
             
             # 연속번호 개수
             consecutive_count = 0
@@ -431,11 +468,11 @@ def run_ultimate_65_analysis(df):
         return {'error': True}
 
 def analyze_frequency(df, number_cols):
-    """빈도 분석"""
+    """빈도 분석 - 타입 안전성 보장"""
     try:
         all_numbers = []
         for _, row in df.iterrows():
-            all_numbers.extend([row[col] for col in number_cols if pd.notna(row[col])])
+            all_numbers.extend([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
         
         frequency = Counter(all_numbers)
         return {
@@ -447,53 +484,59 @@ def analyze_frequency(df, number_cols):
         return {'hot_numbers': list(range(1, 21)), 'cold_numbers': list(range(31, 46))}
 
 def analyze_patterns(df, number_cols):
-    """패턴 분석"""
+    """패턴 분석 - 타입 안전성 보장"""
     try:
-        odd_counts = df['odd_count'].tolist()
-        return {
-            'optimal_odd_count': Counter(odd_counts).most_common(1)[0][0],
-            'odd_distribution': dict(Counter(odd_counts))
-        }
+        if 'odd_count' in df.columns:
+            odd_counts = [convert_to_python_int(x) for x in df['odd_count'].tolist()]
+            return {
+                'optimal_odd_count': Counter(odd_counts).most_common(1)[0][0],
+                'odd_distribution': dict(Counter(odd_counts))
+            }
+        else:
+            return {'optimal_odd_count': 3, 'odd_distribution': {3: 100}}
     except:
         return {'optimal_odd_count': 3, 'odd_distribution': {3: 100}}
 
 def analyze_statistics(df, number_cols):
-    """통계 분석"""
+    """통계 분석 - 타입 안전성 보장"""
     try:
-        sum_stats = df['sum_total'].describe()
-        return {
-            'optimal_sum_range': (int(sum_stats['25%']), int(sum_stats['75%'])),
-            'mean_sum': sum_stats['mean'],
-            'std_sum': sum_stats['std']
-        }
+        if 'sum_total' in df.columns:
+            sum_stats = df['sum_total'].describe()
+            return {
+                'optimal_sum_range': (convert_to_python_int(sum_stats['25%']), convert_to_python_int(sum_stats['75%'])),
+                'mean_sum': convert_to_python_float(sum_stats['mean']),
+                'std_sum': convert_to_python_float(sum_stats['std'])
+            }
+        else:
+            return {'optimal_sum_range': (120, 160), 'mean_sum': 135.0, 'std_sum': 20.0}
     except:
-        return {'optimal_sum_range': (120, 160), 'mean_sum': 135, 'std_sum': 20}
+        return {'optimal_sum_range': (120, 160), 'mean_sum': 135.0, 'std_sum': 20.0}
 
 def analyze_enhanced_ac(df):
-    """고급 AC 시스템 분석"""
+    """고급 AC 시스템 분석 - 타입 안전성 보장"""
     try:
         if 'weighted_ac' in df.columns:
             ac_stats = df['weighted_ac'].describe()
             return {
-                'optimal_weighted_ac_range': (ac_stats['25%'], ac_stats['75%']),
-                'mean_weighted_ac': ac_stats['mean']
+                'optimal_weighted_ac_range': (convert_to_python_float(ac_stats['25%']), convert_to_python_float(ac_stats['75%'])),
+                'mean_weighted_ac': convert_to_python_float(ac_stats['mean'])
             }
         else:
-            return {'optimal_weighted_ac_range': (6, 9), 'mean_weighted_ac': 7.5}
+            return {'optimal_weighted_ac_range': (6.0, 9.0), 'mean_weighted_ac': 7.5}
     except:
-        return {'optimal_weighted_ac_range': (6, 9), 'mean_weighted_ac': 7.5}
+        return {'optimal_weighted_ac_range': (6.0, 9.0), 'mean_weighted_ac': 7.5}
 
 def analyze_network_centrality(df):
-    """네트워크 중심성 분석"""
+    """네트워크 중심성 분석 - 타입 안전성 보장"""
     try:
         if 'network_centrality' in df.columns:
-            high_centrality_threshold = df['network_centrality'].quantile(0.75)
+            high_centrality_threshold = convert_to_python_float(df['network_centrality'].quantile(0.75))
             high_centrality_rows = df[df['network_centrality'] >= high_centrality_threshold]
             
             high_centrality_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_centrality_rows.iterrows():
-                high_centrality_numbers.extend([row[col] for col in number_cols if pd.notna(row[col])])
+                high_centrality_numbers.extend([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
             
             centrality_frequency = Counter(high_centrality_numbers)
             top_central_numbers = [num for num, _ in centrality_frequency.most_common(15)]
@@ -501,7 +544,7 @@ def analyze_network_centrality(df):
             return {
                 'high_centrality_numbers': top_central_numbers,
                 'centrality_threshold': high_centrality_threshold,
-                'network_strength': df['network_centrality'].mean()
+                'network_strength': convert_to_python_float(df['network_centrality'].mean())
             }
         else:
             return {'high_centrality_numbers': list(range(1, 16)), 'centrality_threshold': 0.5, 'network_strength': 0.5}
@@ -509,16 +552,16 @@ def analyze_network_centrality(df):
         return {'high_centrality_numbers': list(range(1, 16)), 'centrality_threshold': 0.5, 'network_strength': 0.5}
 
 def analyze_reinforcement_learning(df):
-    """강화학습 분석"""
+    """강화학습 분석 - 타입 안전성 보장"""
     try:
         if 'q_learning_value' in df.columns:
-            high_q_threshold = df['q_learning_value'].quantile(0.75)
+            high_q_threshold = convert_to_python_float(df['q_learning_value'].quantile(0.75))
             high_q_rows = df[df['q_learning_value'] >= high_q_threshold]
             
             high_q_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_q_rows.iterrows():
-                high_q_numbers.extend([row[col] for col in number_cols if pd.notna(row[col])])
+                high_q_numbers.extend([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
             
             q_frequency = Counter(high_q_numbers)
             top_q_numbers = [num for num, _ in q_frequency.most_common(15)]
@@ -526,7 +569,7 @@ def analyze_reinforcement_learning(df):
             return {
                 'high_q_numbers': top_q_numbers,
                 'q_threshold': high_q_threshold,
-                'learning_progress': df['q_learning_value'].mean()
+                'learning_progress': convert_to_python_float(df['q_learning_value'].mean())
             }
         else:
             return {'high_q_numbers': list(range(1, 16)), 'q_threshold': 0.5, 'learning_progress': 0.5}
@@ -534,11 +577,11 @@ def analyze_reinforcement_learning(df):
         return {'high_q_numbers': list(range(1, 16)), 'q_threshold': 0.5, 'learning_progress': 0.5}
 
 def analyze_prophet_forecasting(df):
-    """Prophet 시계열 분석"""
+    """Prophet 시계열 분석 - 타입 안전성 보장"""
     try:
         if 'prophet_trend' in df.columns:
-            current_trend = df['prophet_trend'].tail(5).mean()
-            current_seasonal = df['prophet_seasonal'].tail(5).mean()
+            current_trend = convert_to_python_float(df['prophet_trend'].tail(5).mean())
+            current_seasonal = convert_to_python_float(df['prophet_seasonal'].tail(5).mean())
             
             if current_trend > 0.1:
                 predicted_numbers = list(range(25, 45))
@@ -547,11 +590,13 @@ def analyze_prophet_forecasting(df):
             else:
                 predicted_numbers = list(range(12, 34))
             
+            confidence = 0.8 if abs(current_trend) > 0.1 else 0.6
+            
             return {
                 'predicted_numbers': predicted_numbers[:15],
                 'trend_direction': 'up' if current_trend > 0 else 'down' if current_trend < 0 else 'stable',
                 'seasonal_component': current_seasonal,
-                'forecast_confidence': 0.8 if abs(current_trend) > 0.1 else 0.6
+                'forecast_confidence': convert_to_python_float(confidence)
             }
         else:
             return {'predicted_numbers': list(range(1, 16)), 'trend_direction': 'stable', 'seasonal_component': 0.5, 'forecast_confidence': 0.5}
@@ -559,24 +604,27 @@ def analyze_prophet_forecasting(df):
         return {'predicted_numbers': list(range(1, 16)), 'trend_direction': 'stable', 'seasonal_component': 0.5, 'forecast_confidence': 0.5}
 
 def analyze_bayesian_optimization(df):
-    """베이지안 최적화 분석"""
+    """베이지안 최적화 분석 - 타입 안전성 보장"""
     try:
         if 'bayesian_score' in df.columns:
-            high_bayes_threshold = df['bayesian_score'].quantile(0.75)
+            high_bayes_threshold = convert_to_python_float(df['bayesian_score'].quantile(0.75))
             high_bayes_rows = df[df['bayesian_score'] >= high_bayes_threshold]
             
             high_bayes_numbers = []
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             for _, row in high_bayes_rows.iterrows():
-                high_bayes_numbers.extend([row[col] for col in number_cols if pd.notna(row[col])])
+                high_bayes_numbers.extend([convert_to_python_int(row[col]) for col in number_cols if pd.notna(row[col])])
             
             bayes_frequency = Counter(high_bayes_numbers)
             optimal_numbers = [num for num, _ in bayes_frequency.most_common(15)]
             
+            acquisition_strength = convert_to_python_float(df['bayesian_score'].mean())
+            uncertainty_level = convert_to_python_float(df['uncertainty_score'].mean()) if 'uncertainty_score' in df.columns else 0.8
+            
             return {
                 'optimal_numbers': optimal_numbers,
-                'acquisition_strength': df['bayesian_score'].mean(),
-                'uncertainty_level': df['uncertainty_score'].mean() if 'uncertainty_score' in df.columns else 0.8
+                'acquisition_strength': acquisition_strength,
+                'uncertainty_level': uncertainty_level
             }
         else:
             return {'optimal_numbers': list(range(1, 16)), 'acquisition_strength': 0.022, 'uncertainty_level': 0.8}
@@ -584,24 +632,24 @@ def analyze_bayesian_optimization(df):
         return {'optimal_numbers': list(range(1, 16)), 'acquisition_strength': 0.022, 'uncertainty_level': 0.8}
 
 def analyze_advanced_patterns(df):
-    """고급 패턴 분석"""
+    """고급 패턴 분석 - 타입 안전성 보장"""
     try:
         pattern_results = {}
         
         if 'consecutive_count' in df.columns:
-            consecutive_stats = Counter(df['consecutive_count'])
+            consecutive_stats = Counter([convert_to_python_int(x) for x in df['consecutive_count']])
             pattern_results['optimal_consecutive'] = consecutive_stats.most_common(1)[0][0]
         else:
             pattern_results['optimal_consecutive'] = 1
         
         if 'prime_count' in df.columns:
-            prime_stats = Counter(df['prime_count'])
+            prime_stats = Counter([convert_to_python_int(x) for x in df['prime_count']])
             pattern_results['optimal_prime_count'] = prime_stats.most_common(1)[0][0]
         else:
             pattern_results['optimal_prime_count'] = 2
         
         if 'symmetry_score' in df.columns:
-            symmetry_stats = Counter(df['symmetry_score'])
+            symmetry_stats = Counter([convert_to_python_int(x) for x in df['symmetry_score']])
             pattern_results['optimal_symmetry'] = symmetry_stats.most_common(1)[0][0]
         else:
             pattern_results['optimal_symmetry'] = 0
@@ -611,38 +659,40 @@ def analyze_advanced_patterns(df):
         return {'optimal_consecutive': 1, 'optimal_prime_count': 2, 'optimal_symmetry': 0}
 
 def create_ultimate_ensemble(analysis_results, df):
-    """65+ 방법론 궁극 앙상블"""
+    """65+ 방법론 궁극 앙상블 - 타입 안전성 보장"""
     try:
         number_scores = defaultdict(float)
         
         for num in range(1, 46):
-            number_scores[num] = 100
+            number_scores[num] = 100.0
         
+        # 각 분석 결과별 점수 적용
         freq_result = analysis_results.get('frequency', {})
         hot_numbers = freq_result.get('hot_numbers', [])
         for num in hot_numbers[:15]:
-            number_scores[num] += 150
+            number_scores[num] += 150.0
         
         network_result = analysis_results.get('network_centrality', {})
         central_numbers = network_result.get('high_centrality_numbers', [])
         for num in central_numbers[:15]:
-            number_scores[num] += 180
+            number_scores[num] += 180.0
         
         rl_result = analysis_results.get('reinforcement_learning', {})
         q_numbers = rl_result.get('high_q_numbers', [])
         for num in q_numbers[:15]:
-            number_scores[num] += 170
+            number_scores[num] += 170.0
         
         prophet_result = analysis_results.get('prophet', {})
         predicted_numbers = prophet_result.get('predicted_numbers', [])
         for num in predicted_numbers[:15]:
-            number_scores[num] += 160
+            number_scores[num] += 160.0
         
         bayes_result = analysis_results.get('bayesian_optimization', {})
         optimal_numbers = bayes_result.get('optimal_numbers', [])
         for num in optimal_numbers[:15]:
-            number_scores[num] += 150
+            number_scores[num] += 150.0
         
+        # 점수 정규화
         if number_scores:
             max_score = max(number_scores.values())
             min_score = min(number_scores.values())
@@ -650,10 +700,14 @@ def create_ultimate_ensemble(analysis_results, df):
             
             if score_range > 0:
                 for num in number_scores:
-                    number_scores[num] = (number_scores[num] - min_score) / score_range * 1000
+                    normalized_score = (number_scores[num] - min_score) / score_range * 1000
+                    number_scores[num] = convert_to_python_float(normalized_score)
+        
+        # 딕셔너리의 모든 값을 Python 타입으로 변환
+        final_scores = {num: convert_to_python_float(score) for num, score in number_scores.items()}
         
         return {
-            'final_scores': dict(number_scores),
+            'final_scores': final_scores,
             'methodology_count': 65,
             'confidence_level': 'ultimate'
         }
@@ -661,13 +715,13 @@ def create_ultimate_ensemble(analysis_results, df):
     except Exception as e:
         print(f"앙상블 생성 오류: {e}")
         return {
-            'final_scores': {i: 100 + random.randint(-20, 20) for i in range(1, 46)},
+            'final_scores': {i: convert_to_python_float(100 + random.randint(-20, 20)) for i in range(1, 46)},
             'methodology_count': 65,
             'confidence_level': 'basic'
         }
 
 def generate_ultimate_combination(analysis_results, df):
-    """65+ 분석 결과를 종합하여 최적 조합 생성"""
+    """65+ 분석 결과를 종합하여 최적 조합 생성 - 타입 안전성 보장"""
     try:
         if 'error' in analysis_results:
             return generate_smart_random()
@@ -683,6 +737,7 @@ def generate_ultimate_combination(analysis_results, df):
         sorted_scores = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
         candidates.update([num for num, score in sorted_scores[:25]])
         
+        # 다른 분석 결과들도 후보에 추가
         freq_result = analysis_results.get('frequency', {})
         candidates.update(freq_result.get('hot_numbers', [])[:10])
         
@@ -709,14 +764,15 @@ def generate_ultimate_combination(analysis_results, df):
                     best_score = score
                     best_combination = selected
         
-        return best_combination if best_combination else generate_smart_random()
+        result = best_combination if best_combination else generate_smart_random()
+        return [convert_to_python_int(num) for num in result]
         
     except Exception as e:
         print(f"최적 조합 생성 오류: {e}")
         return generate_smart_random()
 
 def select_ultimate_balanced_numbers(candidates, analysis_results):
-    """균형잡힌 번호 선택 - 65+ 방법론 적용"""
+    """균형잡힌 번호 선택 - 65+ 방법론 적용 - 타입 안전성 보장"""
     try:
         pattern_result = analysis_results.get('pattern', {})
         target_odd = pattern_result.get('optimal_odd_count', 3)
@@ -729,6 +785,7 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
         
         attempts = 50
         for _ in range(attempts):
+            # 후보에서 6개 선택
             selected = random.sample(candidates, min(6, len(candidates)))
             
             while len(selected) < 6:
@@ -737,6 +794,7 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
                     selected.append(num)
             
             selected = selected[:6]
+            selected = [convert_to_python_int(num) for num in selected]
             
             odd_count = sum(1 for num in selected if num % 2 == 1)
             total_sum = sum(selected)
@@ -756,46 +814,52 @@ def select_ultimate_balanced_numbers(candidates, analysis_results):
             if conditions_met >= 2:
                 return selected
         
-        return random.sample(candidates, min(6, len(candidates)))
+        return [convert_to_python_int(num) for num in random.sample(candidates, min(6, len(candidates)))]
         
     except:
         return generate_smart_random()
 
 def evaluate_ultimate_quality(selected, analysis_results, final_scores):
-    """궁극 품질 평가 - 65+ 방법론 종합"""
+    """궁극 품질 평가 - 65+ 방법론 종합 - 타입 안전성 보장"""
     try:
-        score = 0
+        score = 0.0
+        selected = [convert_to_python_int(num) for num in selected]
         
+        # 앙상블 점수
         ensemble_score = sum(final_scores.get(num, 0) for num in selected) * 0.05
-        score += ensemble_score
+        score += convert_to_python_float(ensemble_score)
         
+        # 네트워크 중심성 매칭
         network_result = analysis_results.get('network_centrality', {})
         central_numbers = set(network_result.get('high_centrality_numbers', []))
         centrality_matches = len(set(selected) & central_numbers)
         score += centrality_matches * 30
         
+        # 강화학습 매칭
         rl_result = analysis_results.get('reinforcement_learning', {})
         q_numbers = set(rl_result.get('high_q_numbers', []))
         q_matches = len(set(selected) & q_numbers)
         score += q_matches * 25
         
+        # Prophet 예측 매칭
         prophet_result = analysis_results.get('prophet', {})
         predicted_numbers = set(prophet_result.get('predicted_numbers', []))
         prophet_matches = len(set(selected) & predicted_numbers)
         score += prophet_matches * 20
         
+        # 베이지안 최적화 매칭
         bayes_result = analysis_results.get('bayesian_optimization', {})
         optimal_numbers = set(bayes_result.get('optimal_numbers', []))
         bayes_matches = len(set(selected) & optimal_numbers)
         score += bayes_matches * 15
         
-        return score
+        return convert_to_python_float(score)
         
     except:
-        return 0
+        return 0.0
 
 def generate_smart_random():
-    """지능형 랜덤 생성"""
+    """지능형 랜덤 생성 - 타입 안전성 보장"""
     try:
         zones = [range(1, 10), range(10, 19), range(19, 28), range(28, 37), range(37, 46)]
         selected = []
@@ -811,20 +875,21 @@ def generate_smart_random():
             if num not in selected:
                 selected.append(num)
         
-        return sorted(selected[:6])
+        return [convert_to_python_int(num) for num in sorted(selected[:6])]
         
     except:
         return generate_safe_fallback()
 
 def generate_safe_fallback():
-    """안전장치"""
+    """안전장치 - 타입 안전성 보장"""
     try:
-        return sorted(random.sample(range(1, 46), 6))
+        result = sorted(random.sample(range(1, 46), 6))
+        return [convert_to_python_int(num) for num in result]
     except:
         return [2, 13, 22, 29, 36, 43]
 
 def validate_result(result):
-    """결과 유효성 검증"""
+    """결과 유효성 검증 - 강화된 타입 안전성"""
     try:
         if not isinstance(result, (list, tuple)):
             return generate_safe_fallback()
@@ -835,7 +900,7 @@ def validate_result(result):
         valid_numbers = []
         for num in result:
             if isinstance(num, (int, float, np.number)):
-                int_num = int(num)
+                int_num = convert_to_python_int(num)
                 if 1 <= int_num <= 45:
                     valid_numbers.append(int_num)
         
@@ -867,4 +932,5 @@ if __name__ == "__main__":
     
     result = predict_numbers()
     print(f"예측 결과: {result}")
-    print(f"결과 검증: {isinstance(result, list) and len(result) == 6 and all(1 <= n <= 45 for n in result)}")
+    print(f"결과 검증: {isinstance(result, list) and len(result) == 6 and all(isinstance(n, int) and 1 <= n <= 45 for n in result)}")
+    print(f"Type Check: {[type(x).__name__ for x in result]}")
