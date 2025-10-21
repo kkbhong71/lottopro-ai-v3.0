@@ -7,6 +7,7 @@ Ultimate Prediction 6.0 - Sum Range Analysis
 - 통계적 분포 기반 예측
 - 확률론적 범위 설정
 - 웹앱 표준 인터페이스 준수
+- JSON 직렬화 타입 안전성 보장
 """
 
 import pandas as pd
@@ -21,6 +22,30 @@ try:
 except ImportError:
     pass
 
+def convert_to_python_int(value):
+    """numpy 타입을 Python int로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return int(value)
+        elif isinstance(value, (int, float)):
+            return int(value)
+        else:
+            return int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return random.randint(1, 45)
+
+def convert_to_python_float(value):
+    """numpy 타입을 Python float로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return float(value)
+        elif isinstance(value, (int, float)):
+            return float(value)
+        else:
+            return float(value)
+    except (ValueError, TypeError, OverflowError):
+        return 0.0
+
 def predict_numbers():
     """
     웹앱 표준 예측 함수 - Ultimate v6.0 합계 범위 분석
@@ -31,7 +56,7 @@ def predict_numbers():
     - np: numpy 라이브러리
     
     Returns:
-        list: 정확히 6개의 로또 번호 [1-45 범위의 정수]
+        list: 정확히 6개의 로또 번호 [1-45 범위의 Python 정수]
     """
     try:
         # ⭐ 1단계: globals() 체크 (필수!)
@@ -76,7 +101,7 @@ def predict_numbers():
         return generate_safe_fallback()
 
 def preprocess_data(df):
-    """데이터 전처리 - 컬럼명 정규화 및 유효성 검증"""
+    """데이터 전처리 - 컬럼명 정규화 및 유효성 검증 - 타입 안전성 보장"""
     try:
         # 컬럼명 정규화
         df.columns = [col.strip().lower().replace(' ', '_') for col in df.columns]
@@ -87,11 +112,13 @@ def preprocess_data(df):
             mapping = dict(zip(df.columns[:9], standard_cols))
             df = df.rename(columns=mapping)
         
-        # ⭐ 숫자 컬럼 변환 (num1~num6 사용)
+        # ⭐ 숫자 컬럼 변환 (num1~num6 사용) - 타입 안전성 보장
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
         for col in number_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+                # numpy 타입을 Python int로 변환
+                df[col] = df[col].apply(lambda x: convert_to_python_int(x) if pd.notna(x) else random.randint(1, 45))
         
         # 유효성 필터링
         df = df.dropna(subset=number_cols)
@@ -110,53 +137,56 @@ def preprocess_data(df):
         return df
 
 def analyze_sum_ranges(df):
-    """합계 범위 분석 - Ultimate v6.0 핵심 알고리즘"""
+    """합계 범위 분석 - Ultimate v6.0 핵심 알고리즘 - 타입 안전성 보장"""
     try:
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
         
-        # 1. 모든 회차의 합계 계산
+        # 1. 모든 회차의 합계 계산 - 타입 안전성 보장
         sum_totals = []
         for _, row in df.iterrows():
-            row_sum = sum([row[col] for col in number_cols if col in row and pd.notna(row[col])])
+            row_sum = sum([convert_to_python_int(row[col]) for col in number_cols if col in row and pd.notna(row[col])])
             if row_sum > 0:
                 sum_totals.append(row_sum)
         
         if len(sum_totals) == 0:
             return get_default_sum_analysis()
         
-        # 2. 통계적 분석
-        mean_sum = np.mean(sum_totals)
-        std_sum = np.std(sum_totals)
-        median_sum = np.median(sum_totals)
+        # 2. 통계적 분석 - 타입 안전성 보장
+        mean_sum = convert_to_python_float(np.mean(sum_totals))
+        std_sum = convert_to_python_float(np.std(sum_totals))
+        median_sum = convert_to_python_float(np.median(sum_totals))
         
-        # 3. 분포 분석 (백분위수)
+        # 3. 분포 분석 (백분위수) - 타입 안전성 보장
         percentiles = {
-            'p10': np.percentile(sum_totals, 10),
-            'p20': np.percentile(sum_totals, 20),
-            'p30': np.percentile(sum_totals, 30),
-            'p40': np.percentile(sum_totals, 40),
-            'p50': np.percentile(sum_totals, 50),
-            'p60': np.percentile(sum_totals, 60),
-            'p70': np.percentile(sum_totals, 70),
-            'p80': np.percentile(sum_totals, 80),
-            'p90': np.percentile(sum_totals, 90)
+            'p10': convert_to_python_float(np.percentile(sum_totals, 10)),
+            'p20': convert_to_python_float(np.percentile(sum_totals, 20)),
+            'p30': convert_to_python_float(np.percentile(sum_totals, 30)),
+            'p40': convert_to_python_float(np.percentile(sum_totals, 40)),
+            'p50': convert_to_python_float(np.percentile(sum_totals, 50)),
+            'p60': convert_to_python_float(np.percentile(sum_totals, 60)),
+            'p70': convert_to_python_float(np.percentile(sum_totals, 70)),
+            'p80': convert_to_python_float(np.percentile(sum_totals, 80)),
+            'p90': convert_to_python_float(np.percentile(sum_totals, 90))
         }
         
         # 4. 최적 범위 계산 (상위 60% 구간)
-        optimal_min = int(percentiles['p20'])
-        optimal_max = int(percentiles['p80'])
+        optimal_min = convert_to_python_int(percentiles['p20'])
+        optimal_max = convert_to_python_int(percentiles['p80'])
         
-        # 5. 최근 트렌드 분석 (최근 20회차)
+        # 5. 최근 트렌드 분석 (최근 20회차) - 타입 안전성 보장
         recent_sums = sum_totals[-20:] if len(sum_totals) >= 20 else sum_totals
-        recent_mean = np.mean(recent_sums)
+        recent_mean = convert_to_python_float(np.mean(recent_sums))
         
-        # 6. 빈도 분석 (가장 자주 나오는 합계 구간)
+        # 6. 빈도 분석 (가장 자주 나오는 합계 구간) - 타입 안전성 보장
         sum_ranges = defaultdict(int)
         for s in sum_totals:
             range_key = (s // 10) * 10  # 10 단위로 그룹화
             sum_ranges[range_key] += 1
         
-        most_frequent_range = max(sum_ranges.items(), key=lambda x: x[1])[0] if sum_ranges else 135
+        most_frequent_range = convert_to_python_int(max(sum_ranges.items(), key=lambda x: x[1])[0]) if sum_ranges else 135
+        
+        # 모든 값이 Python 타입인지 확인
+        sum_distribution = {convert_to_python_int(k): convert_to_python_int(v) for k, v in sum_ranges.items()}
         
         return {
             'mean_sum': mean_sum,
@@ -166,7 +196,7 @@ def analyze_sum_ranges(df):
             'optimal_range': (optimal_min, optimal_max),
             'recent_trend': recent_mean,
             'most_frequent_range': most_frequent_range,
-            'sum_distribution': dict(sum_ranges),
+            'sum_distribution': sum_distribution,
             'total_samples': len(sum_totals)
         }
         
@@ -175,27 +205,27 @@ def analyze_sum_ranges(df):
         return get_default_sum_analysis()
 
 def get_default_sum_analysis():
-    """기본 합계 분석 데이터"""
+    """기본 합계 분석 데이터 - 타입 안전성 보장"""
     return {
-        'mean_sum': 135,
-        'std_sum': 25,
-        'median_sum': 135,
+        'mean_sum': 135.0,
+        'std_sum': 25.0,
+        'median_sum': 135.0,
         'percentiles': {
-            'p20': 110, 'p40': 125, 'p50': 135, 'p60': 145, 'p80': 160
+            'p20': 110.0, 'p40': 125.0, 'p50': 135.0, 'p60': 145.0, 'p80': 160.0
         },
         'optimal_range': (110, 160),
-        'recent_trend': 135,
+        'recent_trend': 135.0,
         'most_frequent_range': 130,
         'sum_distribution': {},
         'total_samples': 0
     }
 
 def generate_numbers_in_range(df, sum_analysis):
-    """최적 합계 범위 내에서 번호 조합 생성"""
+    """최적 합계 범위 내에서 번호 조합 생성 - 타입 안전성 보장"""
     try:
         optimal_range = sum_analysis['optimal_range']
-        target_min = optimal_range[0]
-        target_max = optimal_range[1]
+        target_min = convert_to_python_int(optimal_range[0])
+        target_max = convert_to_python_int(optimal_range[1])
         
         # 최근 데이터 기반 후보 번호 추출
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
@@ -206,7 +236,7 @@ def generate_numbers_in_range(df, sum_analysis):
         for _, row in recent_data.iterrows():
             for col in number_cols:
                 if col in row and pd.notna(row[col]):
-                    candidate_numbers.append(int(row[col]))
+                    candidate_numbers.append(convert_to_python_int(row[col]))
         
         # 빈도 분석
         number_frequency = Counter(candidate_numbers)
@@ -238,7 +268,7 @@ def generate_numbers_in_range(df, sum_analysis):
                     best_combination = selected
         
         if best_combination and len(best_combination) == 6:
-            return sorted(best_combination)
+            return [convert_to_python_int(num) for num in sorted(best_combination)]
         else:
             # 목표 범위 내 랜덤 생성
             return generate_random_in_range(target_min, target_max)
@@ -248,7 +278,7 @@ def generate_numbers_in_range(df, sum_analysis):
         return generate_safe_fallback()
 
 def select_balanced_numbers(candidates, target_min, target_max, sum_analysis):
-    """균형잡힌 번호 선택"""
+    """균형잡힌 번호 선택 - 타입 안전성 보장"""
     try:
         # 후보 중에서 랜덤 선택
         if len(candidates) < 6:
@@ -262,7 +292,7 @@ def select_balanced_numbers(candidates, target_min, target_max, sum_analysis):
             if num not in selected:
                 selected.append(num)
         
-        selected = selected[:6]
+        selected = [convert_to_python_int(num) for num in selected[:6]]
         current_sum = sum(selected)
         
         # 합계 범위 조정 (최대 10번 시도)
@@ -272,13 +302,15 @@ def select_balanced_numbers(candidates, target_min, target_max, sum_analysis):
             
             if current_sum < target_min:
                 # 합계가 작으면 큰 번호로 교체
-                min_idx = selected.index(min(selected))
+                min_val = min(selected)
+                min_idx = selected.index(min_val)
                 new_num = random.randint(max(selected) + 1, 45)
                 if new_num <= 45 and new_num not in selected:
                     selected[min_idx] = new_num
             else:
                 # 합계가 크면 작은 번호로 교체
-                max_idx = selected.index(max(selected))
+                max_val = max(selected)
+                max_idx = selected.index(max_val)
                 new_num = random.randint(1, min(selected) - 1)
                 if new_num >= 1 and new_num not in selected:
                     selected[max_idx] = new_num
@@ -289,33 +321,37 @@ def select_balanced_numbers(candidates, target_min, target_max, sum_analysis):
         
     except Exception as e:
         print(f"균형 선택 오류: {e}")
-        return list(range(1, 7))
+        return [convert_to_python_int(i) for i in range(1, 7)]
 
 def evaluate_combination(selected, sum_analysis):
-    """조합 평가 점수 계산"""
+    """조합 평가 점수 계산 - 타입 안전성 보장"""
     try:
         score = 0
+        selected = [convert_to_python_int(num) for num in selected]
         current_sum = sum(selected)
         
         # 1. 최적 범위 내 점수 (50점)
         optimal_range = sum_analysis['optimal_range']
-        if optimal_range[0] <= current_sum <= optimal_range[1]:
+        optimal_min = convert_to_python_int(optimal_range[0])
+        optimal_max = convert_to_python_int(optimal_range[1])
+        
+        if optimal_min <= current_sum <= optimal_max:
             score += 50
         else:
             # 범위 밖이면 거리에 따라 감점
-            if current_sum < optimal_range[0]:
-                distance = optimal_range[0] - current_sum
+            if current_sum < optimal_min:
+                distance = optimal_min - current_sum
             else:
-                distance = current_sum - optimal_range[1]
+                distance = current_sum - optimal_max
             score += max(0, 50 - distance * 2)
         
         # 2. 평균과의 근접도 (30점)
-        mean_sum = sum_analysis['mean_sum']
+        mean_sum = convert_to_python_float(sum_analysis['mean_sum'])
         distance_from_mean = abs(current_sum - mean_sum)
         score += max(0, 30 - distance_from_mean)
         
         # 3. 최근 트렌드와의 유사도 (20점)
-        recent_trend = sum_analysis['recent_trend']
+        recent_trend = convert_to_python_float(sum_analysis['recent_trend'])
         trend_distance = abs(current_sum - recent_trend)
         score += max(0, 20 - trend_distance)
         
@@ -336,14 +372,17 @@ def evaluate_combination(selected, sum_analysis):
         return 0
 
 def generate_random_in_range(target_min, target_max):
-    """목표 범위 내 랜덤 번호 생성"""
+    """목표 범위 내 랜덤 번호 생성 - 타입 안전성 보장"""
     try:
         attempts = 0
         max_attempts = 100
+        target_min = convert_to_python_int(target_min)
+        target_max = convert_to_python_int(target_max)
         
         while attempts < max_attempts:
             # 랜덤으로 6개 선택
             selected = sorted(random.sample(range(1, 46), 6))
+            selected = [convert_to_python_int(num) for num in selected]
             current_sum = sum(selected)
             
             # 범위 체크
@@ -361,8 +400,10 @@ def generate_random_in_range(target_min, target_max):
         return generate_safe_fallback()
 
 def generate_by_target_sum(target_sum):
-    """목표 합계에 맞춰 번호 생성"""
+    """목표 합계에 맞춰 번호 생성 - 타입 안전성 보장"""
     try:
+        target_sum = convert_to_python_int(target_sum)
+        
         # 평균값 기준
         avg = target_sum / 6
         
@@ -390,14 +431,15 @@ def generate_by_target_sum(target_sum):
             if num not in selected:
                 selected.append(num)
         
-        return sorted(selected[:6])
+        result = [convert_to_python_int(num) for num in sorted(selected[:6])]
+        return result
         
     except Exception as e:
         print(f"목표 합계 생성 오류: {e}")
         return generate_safe_fallback()
 
 def generate_safe_fallback():
-    """안전장치: 기본 번호 생성"""
+    """안전장치: 기본 번호 생성 - 타입 안전성 보장"""
     try:
         # 통계적으로 안정적인 범위에서 생성
         # 평균 합계 135 근처 (120~150)
@@ -423,14 +465,14 @@ def generate_safe_fallback():
             if num not in selected:
                 selected.append(num)
         
-        return sorted(selected[:6])
+        return [convert_to_python_int(num) for num in sorted(selected[:6])]
         
     except Exception:
         # 최후의 수단
         return [7, 14, 21, 28, 35, 42]
 
 def validate_result(result):
-    """결과 유효성 검증"""
+    """결과 유효성 검증 - 강화된 타입 안전성"""
     try:
         if not isinstance(result, (list, tuple)):
             return generate_safe_fallback()
@@ -442,7 +484,7 @@ def validate_result(result):
         valid_numbers = []
         for num in result:
             if isinstance(num, (int, float, np.integer)):
-                int_num = int(num)
+                int_num = convert_to_python_int(num)
                 if 1 <= int_num <= 45:
                     valid_numbers.append(int_num)
         
@@ -455,7 +497,7 @@ def validate_result(result):
         
         return sorted(valid_numbers)
         
-    except Exception:
+    except:
         return generate_safe_fallback()
 
 # 테스트 코드 (개발용)
@@ -507,4 +549,5 @@ if __name__ == "__main__":
     )
     
     print(f"\n{'✅' if is_valid else '❌'} 유효성 검사: {is_valid}")
+    print(f"🔍 Type Check: {[type(x).__name__ for x in result]}")
     print("=" * 60)
