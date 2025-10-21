@@ -136,11 +136,11 @@ class LottoProAI:
         try:
             # 여러 가능한 경로 시도
             possible_paths = [
-                self.data_path / 'new_1193.csv',
-                Path('data/new_1193.csv'),
-                Path('new_1193.csv'),
-                Path('/opt/render/project/src/data/new_1193.csv'),
-                Path('/opt/render/project/src/new_1193.csv')
+                self.data_path / 'new_1194.csv',
+                Path('data/new_1194.csv'),
+                Path('new_1194.csv'),
+                Path('/opt/render/project/src/data/new_1194.csv'),
+                Path('/opt/render/project/src/new_1194.csv')
             ]
             
             csv_path = None
@@ -159,7 +159,7 @@ class LottoProAI:
                 logger.error(f"❌ CSV 파일을 찾을 수 없음. 시도한 경로:")
                 for path in possible_paths:
                     logger.error(f"  - {path} (exists: {path.exists()})")
-                raise FileNotFoundError("new_1193.csv 파일을 찾을 수 없습니다")
+                raise FileNotFoundError("new_1194.csv 파일을 찾을 수 없습니다")
             
             # CSV 파일 로드
             load_start_time = time.time()
@@ -588,7 +588,7 @@ if not _verification_passed:
                 'algorithm': prediction_data['algorithm'],
                 'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
-                'round_predicted': prediction_data.get('round_predicted', 1193),
+                'round_predicted': prediction_data.get('round_predicted', 1194),
                 'is_checked': False,
                 'match_result': None,
                 'cached': prediction_data.get('cached', False)
@@ -716,7 +716,7 @@ def index():
     return render_template('index.html', 
                          algorithm_count=algorithm_count,
                          data_count=data_count,
-                         latest_round=1193,
+                         latest_round=1194,
                          version="3.0")
 
 @app.route('/algorithms')
@@ -955,7 +955,7 @@ def get_lottery_data():
             'status': 'success',
             'data': lotto_ai.lotto_df.to_dict('records'),
             'total_records': len(lotto_ai.lotto_df),
-            'latest_round': 1193
+            'latest_round': 1194
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
@@ -975,7 +975,7 @@ def get_all_algorithm_info():
             'status': 'success',
             'info': unique_algorithms,
             'count': len(unique_algorithms),
-            'latest_round': 1193,
+            'latest_round': 1194,
             'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
@@ -1091,10 +1091,10 @@ def verify_csv():
         }
         
         possible_paths = [
-            Path('data/new_1193.csv'),
-            Path('new_1193.csv'),
-            Path('/opt/render/project/src/data/new_1193.csv'),
-            Path('/opt/render/project/src/new_1193.csv')
+            Path('data/new_1194.csv'),
+            Path('new_1194.csv'),
+            Path('/opt/render/project/src/data/new_1194.csv'),
+            Path('/opt/render/project/src/new_1194.csv')
         ]
         
         for path in possible_paths:
@@ -1156,7 +1156,7 @@ def health_check():
         'data_records': len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0,
         'csv_load_success': not lotto_ai.lotto_df.empty,
         'csv_validation': lotto_ai.data_validation,
-        'latest_round': 1193,
+        'latest_round': 1194,
         'version': '3.0',
         'session_active': 'user_id' in session,
         'data_flow_stats': DATA_FLOW_STATS
@@ -1207,7 +1207,7 @@ if __name__ == '__main__':
     logger.info(f"📝 Debug mode: {debug_mode}")
     logger.info(f"🤖 Algorithms loaded: {len(lotto_ai.algorithm_info.get('algorithms', {}))}")
     logger.info(f"📊 Lottery data records: {len(lotto_ai.lotto_df) if not lotto_ai.lotto_df.empty else 0}")
-    logger.info(f"🎯 Latest round: 1193")
+    logger.info(f"🎯 Latest round: 1194")
     logger.info(f"✅ CSV load status: {'SUCCESS' if not lotto_ai.lotto_df.empty else 'FAILED'}")
     
     if not lotto_ai.lotto_df.empty:
