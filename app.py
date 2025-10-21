@@ -39,7 +39,7 @@ ALGORITHM_CACHE = {}
 LAST_EXECUTION = {}
 EXECUTION_LIMIT = 60
 
-# 🆕 데이터 흐름 검증을 위한 전역 변수
+# 데이터 흐름 검증을 위한 전역 변수
 DATA_FLOW_STATS = {
     'csv_load_time': None,
     'csv_load_success': False,
@@ -47,6 +47,20 @@ DATA_FLOW_STATS = {
     'last_algorithm_execution': None,
     'data_validation_results': {}
 }
+
+def convert_numpy_types(obj):
+    """numpy 타입을 Python 기본 타입으로 변환"""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, dict):
+        return {k: convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    return obj
 
 def rate_limit(limit_seconds=60):
     """API 호출 제한 데코레이터"""
@@ -86,7 +100,7 @@ class LottoProAI:
         self.cache_path = self.data_path / 'cache'
         self.cache_path.mkdir(exist_ok=True)
         
-        # 🆕 데이터 검증 결과 저장
+        # 데이터 검증 결과 저장
         self.data_validation = {
             'csv_found': False,
             'csv_path': None,
@@ -132,7 +146,7 @@ class LottoProAI:
             }
             
     def load_lotto_data(self):
-        """로또 당첨번호 데이터 로드 - 🆕 검증 기능 강화"""
+        """로또 당첨번호 데이터 로드 - 검증 기능 강화"""
         try:
             # 여러 가능한 경로 시도
             possible_paths = [
@@ -166,7 +180,7 @@ class LottoProAI:
             self.lotto_df = pd.read_csv(csv_path)
             load_duration = time.time() - load_start_time
             
-            # 🆕 검증 1: 기본 정보
+            # 검증 1: 기본 정보
             logger.info("=" * 70)
             logger.info("📊 CSV 데이터 로드 검증")
             logger.info("=" * 70)
@@ -178,17 +192,20 @@ class LottoProAI:
             self.data_validation['records_loaded'] = len(self.lotto_df)
             self.data_validation['load_duration'] = load_duration
             
-            # 🆕 검증 2: 샘플 데이터
+            # 검증 2: 샘플 데이터
             if not self.lotto_df.empty:
                 first_row = self.lotto_df.iloc[0].to_dict()
                 last_row = self.lotto_df.iloc[-1].to_dict()
+                # numpy 타입 변환
+                first_row = convert_numpy_types(first_row)
+                last_row = convert_numpy_types(last_row)
                 logger.info(f"🎲 첫 회차: {first_row}")
                 logger.info(f"🎲 최신 회차: {last_row}")
                 
                 self.data_validation['first_record'] = first_row
                 self.data_validation['latest_record'] = last_row
             
-            # 🆕 검증 3: 데이터 품질 검사
+            # 검증 3: 데이터 품질 검사
             expected_columns = ['round', 'draw date', 'num1', 'num2', 'num3', 'num4', 'num5', 'num6', 'bonus num']
             actual_columns = list(self.lotto_df.columns)
             
@@ -202,7 +219,7 @@ class LottoProAI:
                 logger.warning(f"    실제: {actual_columns}")
                 self.data_validation['columns_verified'] = False
             
-            # 🆕 검증 4: 번호 컬럼 품질
+            # 검증 4: 번호 컬럼 품질
             number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
             quality_report = {}
             
@@ -229,7 +246,7 @@ class LottoProAI:
             
             self.data_validation['data_quality'] = quality_report
             
-            # 🆕 검증 5: 통계 요약
+            # 검증 5: 통계 요약
             if all(col in self.lotto_df.columns for col in number_cols):
                 logger.info(f"📈 데이터 통계:")
                 for col in number_cols:
@@ -241,7 +258,7 @@ class LottoProAI:
             logger.info(f"✅ 로또 데이터 로드 완료 - {len(self.lotto_df)}회차")
             logger.info("=" * 70)
             
-            # 🆕 전역 통계 업데이트
+            # 전역 통계 업데이트
             DATA_FLOW_STATS['csv_load_time'] = datetime.now().isoformat()
             DATA_FLOW_STATS['csv_load_success'] = True
             DATA_FLOW_STATS['total_records'] = len(self.lotto_df)
@@ -293,7 +310,7 @@ class LottoProAI:
         return f"{algorithm_id}_{data_hash}"
     
     def execute_github_algorithm(self, algorithm_id, user_numbers=None):
-        """GitHub에서 알고리즘 코드를 안전하게 실행 - 🆕 검증 기능 강화"""
+        """GitHub에서 알고리즘 코드를 안전하게 실행 - 검증 기능 강화"""
         execution_log = {
             'algorithm_id': algorithm_id,
             'start_time': datetime.now().isoformat(),
@@ -306,7 +323,7 @@ class LottoProAI:
             if algorithm_id not in self.algorithm_info.get('algorithms', {}):
                 raise Exception(f"Algorithm '{algorithm_id}' not found")
             
-            # 🆕 검증 1: 데이터 로드 상태 확인
+            # 검증 1: 데이터 로드 상태 확인
             if self.lotto_df.empty:
                 logger.error("❌ 로또 데이터가 비어있음 - 알고리즘 실행 불가")
                 execution_log['error'] = 'empty_dataframe'
@@ -351,7 +368,7 @@ class LottoProAI:
                 for issue in dangerous_issues:
                     logger.warning(f"  - {issue}")
             
-            # 🆕 검증 2: 데이터 전달 전 로깅
+            # 검증 2: 데이터 전달 전 로깅
             logger.info("=" * 70)
             logger.info(f"🚀 알고리즘 실행 준비: {algorithm_id}")
             logger.info("=" * 70)
@@ -361,13 +378,15 @@ class LottoProAI:
             
             if not self.lotto_df.empty:
                 latest_numbers = self.lotto_df.iloc[-1][['num1', 'num2', 'num3', 'num4', 'num5', 'num6']].tolist()
+                # numpy 타입 변환
+                latest_numbers = [int(x) for x in latest_numbers]
                 logger.info(f"  - 최신 회차 샘플: {latest_numbers}")
                 execution_log['latest_sample'] = latest_numbers
             
             execution_log['data_rows'] = len(self.lotto_df)
             execution_log['data_columns'] = list(self.lotto_df.columns)
             
-            # 🆕 검증 3: 디버깅 코드 주입
+            # 검증 3: 디버깅 코드 주입
             debug_code = """
 # ===== 데이터 수신 검증 코드 =====
 import sys
@@ -445,7 +464,7 @@ if not _verification_passed:
                 'pd': pd,
                 'np': np,
                 'Counter': Counter,
-                'lotto_data': self.lotto_df.copy(),  # ← CSV 데이터를 알고리즘에 전달
+                'lotto_data': self.lotto_df.copy(),  # CSV 데이터를 알고리즘에 전달
                 'data_path': str(self.data_path),
                 'datetime': datetime,
                 'random': np.random,
@@ -455,7 +474,7 @@ if not _verification_passed:
             
             execution_log['data_transfer_verified'] = True
             
-            # 🆕 디버깅 코드 + 알고리즘 코드 실행
+            # 디버깅 코드 + 알고리즘 코드 실행
             full_code = debug_code + code_content
             
             logger.info(f"⚙️ Executing algorithm: {algorithm_id} (데이터: {len(self.lotto_df)}회차)")
@@ -486,29 +505,40 @@ if not _verification_passed:
             if result is None:
                 raise Exception("No prediction function found (tried: predict_numbers, predict, generate_numbers, main)")
             
+            # ✅ numpy 타입을 Python 기본 타입으로 변환
+            result = [int(x) for x in result]  # 확실한 int 변환
+            
             # 결과 검증
             if not isinstance(result, (list, tuple)) or len(result) != 6:
                 raise Exception(f"Algorithm must return exactly 6 numbers, got {len(result) if isinstance(result, (list, tuple)) else 'non-list'}")
             
-            if not all(isinstance(n, (int, np.integer)) and 1 <= n <= 45 for n in result):
+            if not all(isinstance(n, int) and 1 <= n <= 45 for n in result):
                 raise Exception("All numbers must be integers between 1 and 45")
             
             if len(set(result)) != 6:
                 raise Exception("All numbers must be unique")
             
             execution_log['execution_success'] = True
-            execution_log['result'] = list(map(int, result))
+            execution_log['result'] = result
+            
+            # ✅ accuracy_rate도 변환
+            accuracy_rate = algorithm_info.get('accuracy_rate', algorithm_info.get('accuracy', 0))
+            if isinstance(accuracy_rate, (np.floating, np.integer)):
+                accuracy_rate = float(accuracy_rate)
             
             prediction_result = {
                 'status': 'success',
-                'numbers': sorted(list(map(int, result))),
+                'numbers': sorted(result),  # 이미 int로 변환됨
                 'algorithm': algorithm_id,
                 'algorithm_name': algorithm_info.get('name', algorithm_id),
-                'accuracy_rate': algorithm_info.get('accuracy_rate', algorithm_info.get('accuracy', 0)),
+                'accuracy_rate': accuracy_rate,  # 변환된 값 사용
                 'timestamp': datetime.now().isoformat(),
                 'cached': False,
-                'execution_log': execution_log  # 🆕 실행 로그 포함
+                'execution_log': execution_log
             }
+            
+            # ✅ 전체 결과를 변환하여 안전하게 처리
+            prediction_result = convert_numpy_types(prediction_result)
             
             # 캐시 저장
             if not user_numbers:
@@ -517,7 +547,7 @@ if not _verification_passed:
                     json.dump(prediction_result, f, ensure_ascii=False, indent=2)
                 logger.info(f"💾 Cached result for {algorithm_id}")
             
-            # 🆕 전역 통계 업데이트
+            # 전역 통계 업데이트
             DATA_FLOW_STATS['last_algorithm_execution'] = {
                 'algorithm_id': algorithm_id,
                 'timestamp': datetime.now().isoformat(),
@@ -564,6 +594,9 @@ if not _verification_passed:
     def save_user_prediction(self, user_id, prediction_data):
         """사용자 예측 저장"""
         try:
+            # ✅ 입력 데이터 타입 변환
+            prediction_data = convert_numpy_types(prediction_data)
+            
             if self.user_data_path.exists():
                 with open(self.user_data_path, 'r', encoding='utf-8') as f:
                     user_data = json.load(f)
@@ -584,7 +617,7 @@ if not _verification_passed:
             
             prediction_entry = {
                 'id': str(uuid.uuid4()),
-                'numbers': prediction_data['numbers'],
+                'numbers': prediction_data['numbers'],  # 이미 변환됨
                 'algorithm': prediction_data['algorithm'],
                 'algorithm_name': prediction_data.get('algorithm_name', ''),
                 'timestamp': prediction_data.get('timestamp', datetime.now().isoformat()),
@@ -593,6 +626,9 @@ if not _verification_passed:
                 'match_result': None,
                 'cached': prediction_data.get('cached', False)
             }
+            
+            # ✅ 저장 전 한 번 더 변환
+            prediction_entry = convert_numpy_types(prediction_entry)
             
             user_data[user_id]['predictions'].append(prediction_entry)
             user_data[user_id]['stats']['total_predictions'] += 1
@@ -739,6 +775,8 @@ def execute_algorithm(algorithm_id):
         return jsonify({'status': 'error', 'message': 'Algorithm not found'}), 404
     
     result = lotto_ai.execute_github_algorithm(algorithm_id)
+    # ✅ 응답 전 타입 변환 보장
+    result = convert_numpy_types(result)
     return jsonify(result)
 
 @app.route('/api/predict', methods=['POST'])
@@ -789,6 +827,9 @@ def predict_numbers():
                 }), 400
         
         result = lotto_ai.execute_github_algorithm(algorithm_id, user_numbers)
+        
+        # ✅ 응답 전 타입 변환 보장
+        result = convert_numpy_types(result)
         
         return jsonify(result)
         
@@ -950,14 +991,19 @@ def get_lottery_data():
                 'status': 'error',
                 'message': 'No lottery data available'
             })
+        
+        # ✅ 데이터를 JSON으로 변환하기 전에 numpy 타입 처리
+        data_records = lotto_ai.lotto_df.to_dict('records')
+        data_records = convert_numpy_types(data_records)
             
         return jsonify({
             'status': 'success',
-            'data': lotto_ai.lotto_df.to_dict('records'),
+            'data': data_records,
             'total_records': len(lotto_ai.lotto_df),
             'latest_round': 1194
         })
     except Exception as e:
+        logger.error(f"❌ Lottery data API error: {str(e)}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/api/algorithm-info')
@@ -971,13 +1017,17 @@ def get_all_algorithm_info():
             if key not in unique_algorithms:
                 unique_algorithms[key] = value
         
-        return jsonify({
+        # ✅ 응답 전 타입 변환
+        response_data = {
             'status': 'success',
             'info': unique_algorithms,
             'count': len(unique_algorithms),
             'latest_round': 1194,
             'timestamp': datetime.now().isoformat()
-        })
+        }
+        response_data = convert_numpy_types(response_data)
+        
+        return jsonify(response_data)
     except Exception as e:
         logger.error(f"❌ Failed to get algorithm info: {str(e)}")
         return jsonify({
@@ -992,16 +1042,20 @@ def get_algorithm_info(algorithm_id):
     if algorithm_id not in algorithms:
         return jsonify({'status': 'error', 'message': 'Algorithm not found'}), 404
     
-    return jsonify({
+    # ✅ 응답 전 타입 변환
+    response_data = {
         'status': 'success',
         'algorithm': algorithms[algorithm_id]
-    })
+    }
+    response_data = convert_numpy_types(response_data)
+    
+    return jsonify(response_data)
 
-# 🆕 ===== 검증용 API 엔드포인트 =====
+# 검증용 API 엔드포인트
 
 @app.route('/api/debug/data-flow')
 def debug_data_flow():
-    """🆕 데이터 흐름 디버깅 API - 전체 파이프라인 검증"""
+    """데이터 흐름 디버깅 API - 전체 파이프라인 검증"""
     try:
         result = {
             'timestamp': datetime.now().isoformat(),
@@ -1020,8 +1074,8 @@ def debug_data_flow():
         }
         
         if not lotto_ai.lotto_df.empty:
-            step1['first_record'] = lotto_ai.lotto_df.iloc[0].to_dict()
-            step1['latest_record'] = lotto_ai.lotto_df.iloc[-1].to_dict()
+            step1['first_record'] = convert_numpy_types(lotto_ai.lotto_df.iloc[0].to_dict())
+            step1['latest_record'] = convert_numpy_types(lotto_ai.lotto_df.iloc[-1].to_dict())
         
         result['steps'].append(step1)
         
@@ -1069,6 +1123,9 @@ def debug_data_flow():
         }
         result['steps'].append(step4)
         
+        # ✅ 응답 전 타입 변환
+        result = convert_numpy_types(result)
+        
         return jsonify(result)
         
     except Exception as e:
@@ -1080,7 +1137,7 @@ def debug_data_flow():
 
 @app.route('/api/debug/verify-csv')
 def verify_csv():
-    """🆕 CSV 파일 직접 검증 API"""
+    """CSV 파일 직접 검증 API"""
     try:
         verification = {
             'timestamp': datetime.now().isoformat(),
@@ -1127,7 +1184,7 @@ def verify_csv():
                         'success': True,
                         'sample_rows': len(test_df),
                         'columns': list(test_df.columns),
-                        'first_row': test_df.iloc[0].to_dict() if not test_df.empty else {}
+                        'first_row': convert_numpy_types(test_df.iloc[0].to_dict()) if not test_df.empty else {}
                     }
                 except Exception as load_error:
                     verification['load_test'] = {
@@ -1148,8 +1205,8 @@ def verify_csv():
 
 @app.route('/api/health')
 def health_check():
-    """🔄 서비스 상태 확인 - 검증 정보 강화"""
-    return jsonify({
+    """서비스 상태 확인 - 검증 정보 강화"""
+    health_data = {
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'algorithms_loaded': len(lotto_ai.algorithm_info.get('algorithms', {})),
@@ -1160,9 +1217,12 @@ def health_check():
         'version': '3.0',
         'session_active': 'user_id' in session,
         'data_flow_stats': DATA_FLOW_STATS
-    })
-
-# 🆕 ===== 검증용 API 엔드포인트 끝 =====
+    }
+    
+    # ✅ 응답 전 타입 변환
+    health_data = convert_numpy_types(health_data)
+    
+    return jsonify(health_data)
 
 @app.errorhandler(404)
 def not_found(error):
