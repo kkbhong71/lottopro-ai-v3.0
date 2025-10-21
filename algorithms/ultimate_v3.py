@@ -7,6 +7,7 @@ Ultimate Lotto Prediction System 3.0 Enhanced - Web App Standardized Version
 - 글로벌 변수 사용 (lotto_data, pd, np)
 - 웹앱 안전 실행 환경 준수
 - 에러 처리 및 안전장치 완비
+- JSON 직렬화 타입 안전성 보장
 """
 
 import pandas as pd
@@ -22,6 +23,30 @@ try:
 except ImportError:
     pass
 
+def convert_to_python_int(value):
+    """numpy 타입을 Python int로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return int(value)
+        elif isinstance(value, (int, float)):
+            return int(value)
+        else:
+            return int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return random.randint(1, 45)
+
+def convert_to_python_float(value):
+    """numpy 타입을 Python float로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return float(value)
+        elif isinstance(value, (int, float)):
+            return float(value)
+        else:
+            return float(value)
+    except (ValueError, TypeError, OverflowError):
+        return 0.0
+
 def predict_numbers():
     """
     웹앱 표준 예측 함수 - Ultimate Enhanced v3.0 시스템
@@ -33,7 +58,7 @@ def predict_numbers():
     - data_path: 데이터 폴더 경로 (문자열)
     
     Returns:
-        list: 정확히 6개의 로또 번호 [1-45 범위의 정수]
+        list: 정확히 6개의 로또 번호 [1-45 범위의 Python 정수]
     """
     try:
         # 1. 데이터 검증
@@ -67,11 +92,13 @@ def preprocess_data(df):
             mapping = dict(zip(df.columns[:9], standard_cols))
             df = df.rename(columns=mapping)
         
-        # 숫자 컬럼 변환
+        # 숫자 컬럼 변환 - 타입 안전성 보장
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
         for col in number_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+                # numpy 타입을 Python int로 변환
+                df[col] = df[col].apply(lambda x: convert_to_python_int(x) if pd.notna(x) else random.randint(1, 45))
         
         # 유효성 필터링
         df = df.dropna(subset=number_cols)
@@ -108,18 +135,26 @@ def run_ultimate_enhanced_v3_algorithm(df):
         return generate_smart_random()
 
 def create_enhanced_features(df, number_cols):
-    """Enhanced 피처 생성 (Top 5 추가 방법론 포함)"""
+    """Enhanced 피처 생성 (Top 5 추가 방법론 포함) - 타입 안전성 보장"""
     try:
         features = {}
         
-        # 기본 통계 피처
-        features['sum_stats'] = df[number_cols].sum(axis=1).values
-        features['mean_stats'] = df[number_cols].mean(axis=1).values
-        features['std_stats'] = df[number_cols].std(axis=1).fillna(0).values
+        # 기본 통계 피처 - Python 타입으로 변환
+        sum_values = df[number_cols].sum(axis=1)
+        features['sum_stats'] = [convert_to_python_int(x) for x in sum_values.values]
+        
+        mean_values = df[number_cols].mean(axis=1)
+        features['mean_stats'] = [convert_to_python_float(x) for x in mean_values.values]
+        
+        std_values = df[number_cols].std(axis=1).fillna(0)
+        features['std_stats'] = [convert_to_python_float(x) for x in std_values.values]
         
         # 홀짝/고저 분석
-        features['odd_counts'] = df[number_cols].apply(lambda row: sum(x % 2 for x in row), axis=1).values
-        features['high_counts'] = df[number_cols].apply(lambda row: sum(x >= 23 for x in row), axis=1).values
+        odd_counts = df[number_cols].apply(lambda row: sum(x % 2 for x in row), axis=1)
+        features['odd_counts'] = [convert_to_python_int(x) for x in odd_counts.values]
+        
+        high_counts = df[number_cols].apply(lambda row: sum(x >= 23 for x in row), axis=1)
+        features['high_counts'] = [convert_to_python_int(x) for x in high_counts.values]
         
         # Enhanced 방법론 1: 제외수/필터링 시스템
         features['filtering'] = create_filtering_features(df, number_cols)
@@ -140,17 +175,17 @@ def create_enhanced_features(df, number_cols):
         
     except Exception as e:
         print(f"Feature creation error: {str(e)[:50]}")
-        return {'basic': df[number_cols].sum(axis=1).values}
+        return {'basic': [convert_to_python_int(x) for x in df[number_cols].sum(axis=1).values]}
 
 def create_filtering_features(df, number_cols):
-    """제외수/필터링 시스템 피처"""
+    """제외수/필터링 시스템 피처 - 타입 안전성 보장"""
     try:
         filtering_data = {}
         
         # AC값 (산술적 복잡성) 계산
         ac_values = []
         for _, row in df.iterrows():
-            numbers = sorted([row[col] for col in number_cols])
+            numbers = sorted([convert_to_python_int(row[col]) for col in number_cols])
             differences = set()
             for i in range(len(numbers) - 1):
                 diff = numbers[i+1] - numbers[i]
@@ -162,7 +197,7 @@ def create_filtering_features(df, number_cols):
         # 연속번호 최대 길이
         max_consecutive = []
         for _, row in df.iterrows():
-            numbers = sorted([row[col] for col in number_cols])
+            numbers = sorted([convert_to_python_int(row[col]) for col in number_cols])
             max_len = 1
             current_len = 1
             for i in range(1, len(numbers)):
@@ -225,7 +260,7 @@ def create_compatibility_features(df, number_cols):
         # 이웃수 동반 출현 점수
         neighbor_scores = []
         for _, row in df.iterrows():
-            numbers = set([row[col] for col in number_cols])
+            numbers = set([convert_to_python_int(row[col]) for col in number_cols])
             score = 0
             for num in numbers:
                 neighbors = neighbor_map.get(num, [])
@@ -264,13 +299,13 @@ def get_neighbors(num, lotto_grid):
     return neighbors
 
 def create_triangle_pattern_features(df, number_cols):
-    """삼각패턴 분석 피처"""
+    """삼각패턴 분석 피처 - 타입 안전성 보장"""
     try:
         triangle_data = {}
         
         triangle_complexity_scores = []
         for _, row in df.iterrows():
-            numbers = sorted([row[col] for col in number_cols])
+            numbers = sorted([convert_to_python_int(row[col]) for col in number_cols])
             
             # 삼각수 생성 (재귀적 차분)
             triangle_numbers = set()
@@ -294,7 +329,7 @@ def create_triangle_pattern_features(df, number_cols):
             
             # 삼각패턴 복잡도
             complexity = level + len(triangle_numbers) / 10
-            triangle_complexity_scores.append(complexity)
+            triangle_complexity_scores.append(convert_to_python_float(complexity))
         
         triangle_data['complexity'] = triangle_complexity_scores
         return triangle_data
@@ -303,7 +338,7 @@ def create_triangle_pattern_features(df, number_cols):
         return {'complexity': [5.0] * len(df)}
 
 def create_timeseries_features(df, number_cols):
-    """고급 시계열 분해 피처"""
+    """고급 시계열 분해 피처 - 타입 안전성 보장"""
     try:
         if len(df) < 12:
             return {'trend_scores': [0.5] * len(df)}
@@ -315,23 +350,23 @@ def create_timeseries_features(df, number_cols):
         for num in range(1, 46):
             series = []
             for _, row in df.iterrows():
-                appeared = 1 if num in [row[col] for col in number_cols] else 0
+                appeared = 1 if num in [convert_to_python_int(row[col]) for col in number_cols] else 0
                 series.append(appeared)
             number_series[num] = np.array(series)
         
         # 트렌드 점수 계산
         trend_scores = []
         for i, row in df.iterrows():
-            numbers = [row[col] for col in number_cols]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols]
             trend_sum = 0
             
             for num in numbers:
                 if i >= 6:
                     recent_series = number_series[num][max(0, i-6):i+1]
-                    trend = np.mean(recent_series)
+                    trend = convert_to_python_float(np.mean(recent_series))
                     trend_sum += trend
             
-            trend_scores.append(trend_sum / 6)
+            trend_scores.append(convert_to_python_float(trend_sum / 6))
         
         timeseries_data['trend_scores'] = trend_scores
         return timeseries_data
@@ -340,7 +375,7 @@ def create_timeseries_features(df, number_cols):
         return {'trend_scores': [0.5] * len(df)}
 
 def create_dynamic_threshold_features(df, number_cols):
-    """동적 임계값 시스템 피처"""
+    """동적 임계값 시스템 피처 - 타입 안전성 보장"""
     try:
         dynamic_data = {}
         
@@ -355,16 +390,17 @@ def create_dynamic_threshold_features(df, number_cols):
                 recent_values = df.iloc[i-10:i+1][number_cols].sum(axis=1).values
                 if len(recent_values) > 1:
                     trend_strength = abs(np.polyfit(range(len(recent_values)), recent_values, 1)[0])
+                    trend_strength = convert_to_python_float(trend_strength)
                 else:
-                    trend_strength = 0
+                    trend_strength = 0.0
             else:
-                trend_strength = 0
+                trend_strength = 0.0
             
             trend_strengths.append(trend_strength)
             
             # 계절성 요인
             season_phase = (i % 12) / 12 * 2 * np.pi
-            seasonal_factor = 0.5 + 0.3 * np.sin(season_phase)
+            seasonal_factor = convert_to_python_float(0.5 + 0.3 * np.sin(season_phase))
             seasonal_factors.append(seasonal_factor)
             
             # 동적 가중치
@@ -373,7 +409,7 @@ def create_dynamic_threshold_features(df, number_cols):
             seasonal_adjustment = seasonal_factor - 0.5
             
             dynamic_weight = base_weight + trend_adjustment + seasonal_adjustment
-            dynamic_weight = max(0.5, min(2.0, dynamic_weight))
+            dynamic_weight = convert_to_python_float(max(0.5, min(2.0, dynamic_weight)))
             dynamic_weights.append(dynamic_weight)
         
         dynamic_data['trend_strengths'] = trend_strengths
@@ -415,7 +451,7 @@ def frequency_analysis(df):
         all_numbers = []
         
         for _, row in df.iterrows():
-            all_numbers.extend([row[col] for col in number_cols])
+            all_numbers.extend([convert_to_python_int(row[col]) for col in number_cols])
         
         frequency = Counter(all_numbers)
         top_numbers = [num for num, count in frequency.most_common(20)]
@@ -426,27 +462,27 @@ def frequency_analysis(df):
         return {'frequency_counter': Counter(), 'top_numbers': list(range(1, 21))}
 
 def pattern_analysis(df, features):
-    """패턴 분석"""
+    """패턴 분석 - 타입 안전성 보장"""
     try:
         pattern_data = {}
         
         # 홀짝 패턴
         if 'odd_counts' in features:
-            avg_odd = np.mean(features['odd_counts'])
+            avg_odd = convert_to_python_float(np.mean(features['odd_counts']))
             pattern_data['avg_odd'] = avg_odd
         else:
             pattern_data['avg_odd'] = 3.0
         
         # 고저 패턴
         if 'high_counts' in features:
-            avg_high = np.mean(features['high_counts'])
+            avg_high = convert_to_python_float(np.mean(features['high_counts']))
             pattern_data['avg_high'] = avg_high
         else:
             pattern_data['avg_high'] = 3.0
         
         # 합계 패턴
         if 'sum_stats' in features:
-            avg_sum = np.mean(features['sum_stats'])
+            avg_sum = convert_to_python_float(np.mean(features['sum_stats']))
             pattern_data['avg_sum'] = avg_sum
         else:
             pattern_data['avg_sum'] = 130.0
@@ -457,21 +493,21 @@ def pattern_analysis(df, features):
         return {'avg_odd': 3.0, 'avg_high': 3.0, 'avg_sum': 130.0}
 
 def statistical_analysis(df, features):
-    """통계 분석"""
+    """통계 분석 - 타입 안전성 보장"""
     try:
         stats_data = {}
         
         # 기본 통계
         if 'sum_stats' in features:
-            stats_data['sum_mean'] = np.mean(features['sum_stats'])
-            stats_data['sum_std'] = np.std(features['sum_stats'])
+            stats_data['sum_mean'] = convert_to_python_float(np.mean(features['sum_stats']))
+            stats_data['sum_std'] = convert_to_python_float(np.std(features['sum_stats']))
         else:
             stats_data['sum_mean'] = 130.0
             stats_data['sum_std'] = 15.0
         
         # 변동성 분석
         if 'std_stats' in features:
-            stats_data['volatility'] = np.mean(features['std_stats'])
+            stats_data['volatility'] = convert_to_python_float(np.mean(features['std_stats']))
         else:
             stats_data['volatility'] = 15.0
         
@@ -481,41 +517,41 @@ def statistical_analysis(df, features):
         return {'sum_mean': 130.0, 'sum_std': 15.0, 'volatility': 15.0}
 
 def filtering_analysis(features):
-    """제외수/필터링 분석"""
+    """제외수/필터링 분석 - 타입 안전성 보장"""
     try:
         if 'filtering' in features:
             filtering_data = features['filtering']
-            avg_score = np.mean(filtering_data.get('scores', [100]))
-            high_quality_threshold = np.percentile(filtering_data.get('scores', [100]), 75)
+            avg_score = convert_to_python_float(np.mean(filtering_data.get('scores', [100])))
+            high_quality_threshold = convert_to_python_float(np.percentile(filtering_data.get('scores', [100]), 75))
             
             return {'avg_score': avg_score, 'high_quality_threshold': high_quality_threshold}
         else:
-            return {'avg_score': 100, 'high_quality_threshold': 150}
+            return {'avg_score': 100.0, 'high_quality_threshold': 150.0}
             
     except:
-        return {'avg_score': 100, 'high_quality_threshold': 150}
+        return {'avg_score': 100.0, 'high_quality_threshold': 150.0}
 
 def compatibility_analysis(features):
-    """궁합수/이웃수 분석"""
+    """궁합수/이웃수 분석 - 타입 안전성 보장"""
     try:
         if 'compatibility' in features:
             compatibility_data = features['compatibility']
-            avg_neighbor_score = np.mean(compatibility_data.get('neighbor_scores', [2]))
+            avg_neighbor_score = convert_to_python_float(np.mean(compatibility_data.get('neighbor_scores', [2])))
             neighbor_map = compatibility_data.get('neighbor_map', {})
             
             return {'avg_neighbor_score': avg_neighbor_score, 'neighbor_map': neighbor_map}
         else:
-            return {'avg_neighbor_score': 2, 'neighbor_map': {}}
+            return {'avg_neighbor_score': 2.0, 'neighbor_map': {}}
             
     except:
-        return {'avg_neighbor_score': 2, 'neighbor_map': {}}
+        return {'avg_neighbor_score': 2.0, 'neighbor_map': {}}
 
 def triangle_analysis(features):
-    """삼각패턴 분석"""
+    """삼각패턴 분석 - 타입 안전성 보장"""
     try:
         if 'triangle' in features:
             triangle_data = features['triangle']
-            avg_complexity = np.mean(triangle_data.get('complexity', [5.0]))
+            avg_complexity = convert_to_python_float(np.mean(triangle_data.get('complexity', [5.0])))
             
             return {'avg_complexity': avg_complexity, 'optimal_range': (3, 8)}
         else:
@@ -525,11 +561,12 @@ def triangle_analysis(features):
         return {'avg_complexity': 5.0, 'optimal_range': (3, 8)}
 
 def timeseries_analysis(features):
-    """시계열 분석"""
+    """시계열 분석 - 타입 안전성 보장"""
     try:
         if 'timeseries' in features:
             timeseries_data = features['timeseries']
-            current_trend = np.mean(timeseries_data.get('trend_scores', [0.5])[-10:]) if len(timeseries_data.get('trend_scores', [])) >= 10 else 0.5
+            trend_scores = timeseries_data.get('trend_scores', [0.5])
+            current_trend = convert_to_python_float(np.mean(trend_scores[-10:])) if len(trend_scores) >= 10 else 0.5
             
             return {'current_trend': current_trend, 'trend_direction': 'neutral'}
         else:
@@ -539,11 +576,12 @@ def timeseries_analysis(features):
         return {'current_trend': 0.5, 'trend_direction': 'neutral'}
 
 def dynamic_analysis(features):
-    """동적 임계값 분석"""
+    """동적 임계값 분석 - 타입 안전성 보장"""
     try:
         if 'dynamic' in features:
             dynamic_data = features['dynamic']
-            current_weight = dynamic_data.get('dynamic_weights', [1.0])[-1] if dynamic_data.get('dynamic_weights') else 1.0
+            dynamic_weights = dynamic_data.get('dynamic_weights', [1.0])
+            current_weight = convert_to_python_float(dynamic_weights[-1]) if dynamic_weights else 1.0
             
             return {'current_weight': current_weight, 'trend_momentum': 'normal'}
         else:
@@ -553,14 +591,14 @@ def dynamic_analysis(features):
         return {'current_weight': 1.0, 'trend_momentum': 'normal'}
 
 def run_ultimate_enhanced_ensemble(analysis_vault, df):
-    """Ultimate Enhanced 앙상블"""
+    """Ultimate Enhanced 앙상블 - 타입 안전성 보장"""
     try:
         # 번호별 점수 계산
         number_scores = defaultdict(float)
         
         # 기본 점수
         for num in range(1, 46):
-            number_scores[num] = 100
+            number_scores[num] = 100.0
         
         # 빈도 분석 점수
         if 'frequency' in analysis_vault:
@@ -640,7 +678,7 @@ def is_prime(n):
     return True
 
 def select_optimal_combination(number_scores, analysis_vault):
-    """최적 조합 선택"""
+    """최적 조합 선택 - 타입 안전성 보장"""
     try:
         # 상위 점수 번호들을 후보로
         sorted_scores = sorted(number_scores.items(), key=lambda x: x[1], reverse=True)
@@ -669,15 +707,17 @@ def select_optimal_combination(number_scores, analysis_vault):
                 best_score = score
                 best_combo = combo
         
-        return best_combo if best_combo else random.sample(candidates[:15], 6)
+        result = best_combo if best_combo else random.sample(candidates[:15], 6)
+        return [convert_to_python_int(num) for num in result]
         
     except:
         return generate_smart_random()
 
 def evaluate_combination(combo, analysis_vault):
-    """조합 평가 점수"""
+    """조합 평가 점수 - 타입 안전성 보장"""
     try:
         score = 0
+        combo = [convert_to_python_int(num) for num in combo]
         
         # 기본 조건 체크
         total_sum = sum(combo)
@@ -714,7 +754,7 @@ def passes_enhanced_filtering(numbers):
             return False
         
         # AC값 검사
-        sorted_nums = sorted(numbers)
+        sorted_nums = sorted([convert_to_python_int(num) for num in numbers])
         differences = set()
         for i in range(len(sorted_nums) - 1):
             diff = sorted_nums[i+1] - sorted_nums[i]
@@ -740,7 +780,7 @@ def passes_enhanced_filtering(numbers):
         return True
 
 def generate_smart_random():
-    """지능형 랜덤 생성"""
+    """지능형 랜덤 생성 - 타입 안전성 보장"""
     try:
         # 통계적으로 합리적한 범위에서 선택
         candidates = []
@@ -757,20 +797,21 @@ def generate_smart_random():
             if num not in candidates:
                 candidates.append(num)
         
-        return sorted(candidates[:6])
+        return [convert_to_python_int(num) for num in sorted(candidates[:6])]
         
     except:
         return generate_safe_fallback()
 
 def generate_safe_fallback():
-    """최후 안전장치"""
+    """최후 안전장치 - 타입 안전성 보장"""
     try:
-        return sorted(random.sample(range(1, 46), 6))
+        result = sorted(random.sample(range(1, 46), 6))
+        return [convert_to_python_int(num) for num in result]
     except:
         return [7, 14, 21, 28, 35, 42]
 
 def validate_result(result):
-    """결과 유효성 검증"""
+    """결과 유효성 검증 - 강화된 타입 안전성"""
     try:
         if not isinstance(result, (list, tuple)):
             return generate_safe_fallback()
@@ -782,7 +823,7 @@ def validate_result(result):
         valid_numbers = []
         for num in result:
             if isinstance(num, (int, float, np.number)):
-                int_num = int(num)
+                int_num = convert_to_python_int(num)
                 if 1 <= int_num <= 45:
                     valid_numbers.append(int_num)
         
@@ -820,4 +861,5 @@ if __name__ == "__main__":
     # 테스트 실행
     result = predict_numbers()
     print(f"Ultimate Enhanced v3.0 Result: {result}")
-    print(f"Valid: {isinstance(result, list) and len(result) == 6 and all(1 <= n <= 45 for n in result)}")
+    print(f"Valid: {isinstance(result, list) and len(result) == 6 and all(isinstance(n, int) and 1 <= n <= 45 for n in result)}")
+    print(f"Type Check: {[type(x).__name__ for x in result]}")
