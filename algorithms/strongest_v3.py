@@ -7,6 +7,7 @@ The Strongest in the Universe ver 3.0 - Web App Standardized Version
 - 글로벌 변수 사용 (lotto_data, pd, np)
 - 웹앱 안전 실행 환경 준수
 - 우주적 패턴 분석 및 양자역학적 선택
+- JSON 직렬화 안전성 보장
 """
 
 import pandas as pd
@@ -23,6 +24,18 @@ except ImportError:
     # warnings 모듈을 사용할 수 없는 환경
     pass
 
+def convert_to_python_int(value):
+    """numpy 타입을 Python int로 안전하게 변환"""
+    try:
+        if isinstance(value, (np.integer, np.floating)):
+            return int(value)
+        elif isinstance(value, (int, float)):
+            return int(value)
+        else:
+            return int(float(value))
+    except (ValueError, TypeError, OverflowError):
+        return random.randint(1, 45)
+
 def predict_numbers():
     """
     웹앱 표준 예측 함수 - Strongest Universe v3.0 시스템
@@ -34,14 +47,16 @@ def predict_numbers():
     - data_path: 데이터 폴더 경로 (문자열)
     
     Returns:
-        list: 정확히 6개의 로또 번호 [1-45 범위의 정수]
+        list: 정확히 6개의 로또 번호 [1-45 범위의 Python int]
     """
     try:
         # 1. 데이터 검증
         if 'lotto_data' not in globals() or lotto_data.empty:
+            print("⚠️ [FALLBACK] lotto_data 없음 - 안전 모드")
             return generate_safe_fallback()
         
         df = lotto_data.copy()
+        print(f"✅ [VERIFY] 데이터 로드 성공: {len(df)}회차")
         
         # 2. 데이터 전처리
         df = preprocess_data(df)
@@ -50,10 +65,13 @@ def predict_numbers():
         result = run_strongest_universe_v3_algorithm(df)
         
         # 4. 결과 검증 및 반환
-        return validate_result(result)
+        final_result = validate_result(result)
+        print(f"🌟 [STRONGEST] 최종 결과: {final_result}")
+        
+        return final_result
         
     except Exception as e:
-        print(f"Strongest Universe v3.0 error: {str(e)[:100]}")
+        print(f"❌ [ERROR] Strongest Universe v3.0: {str(e)[:100]}")
         return generate_safe_fallback()
 
 def preprocess_data(df):
@@ -68,11 +86,13 @@ def preprocess_data(df):
             mapping = dict(zip(df.columns[:9], standard_cols))
             df = df.rename(columns=mapping)
         
-        # 숫자 컬럼 변환
+        # 숫자 컬럼 변환 및 타입 안전성 보장
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
         for col in number_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+                # ✅ numpy 타입을 Python int로 변환
+                df[col] = df[col].apply(lambda x: convert_to_python_int(x) if pd.notna(x) else random.randint(1, 45))
         
         # 유효성 필터링
         df = df.dropna(subset=number_cols)
@@ -82,13 +102,15 @@ def preprocess_data(df):
         
         return df.sort_values('round' if 'round' in df.columns else df.columns[0]).reset_index(drop=True)
         
-    except:
+    except Exception as e:
+        print(f"⚠️ [PREPROCESS] 오류: {str(e)[:50]}")
         return df
 
 def run_strongest_universe_v3_algorithm(df):
     """Strongest Universe v3.0 핵심 알고리즘"""
     try:
         if len(df) < 5:
+            print("⚠️ [DATA] 데이터 부족 - 스마트 랜덤 모드")
             return generate_smart_random()
         
         number_cols = ['num1', 'num2', 'num3', 'num4', 'num5', 'num6']
@@ -102,10 +124,13 @@ def run_strongest_universe_v3_algorithm(df):
         # 양자역학적 선택
         final_prediction = quantum_selection(cosmic_weights, advanced_features)
         
-        return final_prediction
+        # ✅ 모든 요소를 Python int로 확실히 변환
+        safe_prediction = [convert_to_python_int(num) for num in final_prediction]
+        
+        return safe_prediction
         
     except Exception as e:
-        print(f"Strongest Universe v3.0 algorithm error: {str(e)[:50]}")
+        print(f"❌ [ALGORITHM] Strongest v3.0 오류: {str(e)[:50]}")
         return generate_smart_random()
 
 def extract_advanced_features(df, number_cols):
@@ -123,7 +148,7 @@ def extract_advanced_features(df, number_cols):
                 for col in number_cols:
                     if col in df.columns:
                         count += (df[col] == num).sum()
-                fib_appearances[num] = count
+                fib_appearances[num] = int(count)  # ✅ Python int 변환
         
         features['fibonacci'] = fib_appearances
         
@@ -136,7 +161,7 @@ def extract_advanced_features(df, number_cols):
             for col in number_cols:
                 if col in df.columns:
                     count += (df[col] == prime).sum()
-            prime_appearances[prime] = count
+            prime_appearances[prime] = int(count)  # ✅ Python int 변환
             
         features['primes'] = prime_appearances
         
@@ -161,11 +186,12 @@ def extract_advanced_features(df, number_cols):
         return features
         
     except Exception as e:
-        print(f"Advanced features error: {str(e)[:50]}")
+        print(f"⚠️ [FEATURES] 특성 추출 오류: {str(e)[:50]}")
         return {'fibonacci': {}, 'primes': {}, 'golden_numbers': [], 'periodicity': {}, 'associations': {}}
 
 def is_prime(n):
     """소수 판별"""
+    n = int(n)  # ✅ 안전한 타입 변환
     if n <= 1:
         return False
     if n <= 3:
@@ -189,9 +215,9 @@ def analyze_periodicity(df, number_cols):
             
             # 각 번호가 나타나는 회차 찾기
             for idx, row in df.iterrows():
-                row_numbers = [row[col] for col in number_cols if col in row]
+                row_numbers = [convert_to_python_int(row[col]) for col in number_cols if col in row]
                 if num in row_numbers:
-                    appearances.append(idx)
+                    appearances.append(int(idx))  # ✅ Python int 변환
             
             if len(appearances) >= 2:
                 # 출현 간격 계산
@@ -199,14 +225,15 @@ def analyze_periodicity(df, number_cols):
                 
                 if intervals:
                     periodicity_scores[num] = {
-                        'avg_interval': np.mean(intervals),
-                        'last_appearance': appearances[-1],
-                        'predicted_next': appearances[-1] + np.mean(intervals)
+                        'avg_interval': float(np.mean(intervals)),  # ✅ Python float 변환
+                        'last_appearance': int(appearances[-1]),   # ✅ Python int 변환
+                        'predicted_next': float(appearances[-1] + np.mean(intervals))  # ✅ Python float 변환
                     }
         
         return periodicity_scores
         
-    except:
+    except Exception as e:
+        print(f"⚠️ [PERIODICITY] 주기성 분석 오류: {str(e)[:30]}")
         return {}
 
 def analyze_association_patterns(df, number_cols):
@@ -217,7 +244,7 @@ def analyze_association_patterns(df, number_cols):
         
         # 동시 출현 빈도 계산
         for _, row in df.iterrows():
-            numbers = [row[col] for col in number_cols if col in row]
+            numbers = [convert_to_python_int(row[col]) for col in number_cols if col in row]
             
             # 각 번호의 총 출현 횟수
             for num in numbers:
@@ -251,11 +278,12 @@ def analyze_association_patterns(df, number_cols):
                     if p_i > 0 and p_j > 0:
                         # PMI (Pointwise Mutual Information) 기반 점수
                         pmi = math.log(p_ij / (p_i * p_j)) if p_i * p_j > 0 else 0
-                        association_scores[i][j] = max(0, pmi)  # 음수는 0으로
+                        association_scores[i][j] = max(0.0, float(pmi))  # ✅ Python float 변환
         
         return association_scores
         
-    except:
+    except Exception as e:
+        print(f"⚠️ [ASSOCIATION] 연관 분석 오류: {str(e)[:30]}")
         return {}
 
 def calculate_cosmic_weights(df, advanced_features):
@@ -271,7 +299,7 @@ def calculate_cosmic_weights(df, advanced_features):
             total_appearances = 0
             for col in number_cols:
                 if col in df.columns:
-                    total_appearances += (df[col] == num).sum()
+                    total_appearances += int((df[col] == num).sum())  # ✅ Python int 변환
             
             freq_weight = total_appearances / len(df) if len(df) > 0 else 0
             weight += freq_weight * 2.0
@@ -308,7 +336,7 @@ def calculate_cosmic_weights(df, advanced_features):
                 recent_df = df.tail(10)
                 for col in number_cols:
                     if col in recent_df.columns:
-                        recent_appearances += (recent_df[col] == num).sum()
+                        recent_appearances += int((recent_df[col] == num).sum())  # ✅ Python int 변환
             
             if recent_appearances == 0:  # 최근 미출현 보너스
                 weight *= 1.2
@@ -320,18 +348,18 @@ def calculate_cosmic_weights(df, advanced_features):
             if digit_sum in [7, 11, 13]:  # 행운의 숫자
                 weight *= 1.05
             
-            cosmic_weights[num] = max(weight, 0.1)  # 최소값 보장
+            cosmic_weights[num] = max(float(weight), 0.1)  # ✅ Python float 변환, 최소값 보장
         
         # 가중치 정규화
         total_weight = sum(cosmic_weights.values())
         for num in cosmic_weights:
-            cosmic_weights[num] /= total_weight
+            cosmic_weights[num] = float(cosmic_weights[num] / total_weight)  # ✅ Python float 변환
         
         return cosmic_weights
         
     except Exception as e:
-        print(f"Cosmic weights error: {str(e)[:50]}")
-        return {i: 1/45 for i in range(1, 46)}
+        print(f"⚠️ [WEIGHTS] 가중치 계산 오류: {str(e)[:50]}")
+        return {i: 1.0/45 for i in range(1, 46)}
 
 def quantum_selection(cosmic_weights, advanced_features):
     """양자역학적 선택 알고리즘"""
@@ -354,7 +382,7 @@ def quantum_selection(cosmic_weights, advanced_features):
                 if len(selected) > 0:
                     associations = advanced_features.get('associations', {})
                     for i, num in enumerate(available_numbers):
-                        association_bonus = 0
+                        association_bonus = 0.0
                         for selected_num in selected:
                             if selected_num in associations and num in associations[selected_num]:
                                 association_bonus += associations[selected_num][num]
@@ -369,7 +397,7 @@ def quantum_selection(cosmic_weights, advanced_features):
                 
                 # 선택
                 selected_num = np.random.choice(available_numbers, p=weights)
-                selected.append(selected_num)
+                selected.append(convert_to_python_int(selected_num))  # ✅ Python int 변환
             
             # 조합 평가
             score = evaluate_quantum_combination(selected, advanced_features)
@@ -378,10 +406,15 @@ def quantum_selection(cosmic_weights, advanced_features):
                 best_score = score
                 best_combination = selected
         
-        return sorted(best_combination) if best_combination else generate_smart_random()
+        if best_combination:
+            # ✅ 최종 결과를 Python int로 확실히 변환
+            result = [convert_to_python_int(num) for num in sorted(best_combination)]
+            return result
+        else:
+            return generate_smart_random()
         
     except Exception as e:
-        print(f"Quantum selection error: {str(e)[:50]}")
+        print(f"⚠️ [QUANTUM] 양자 선택 오류: {str(e)[:50]}")
         return generate_smart_random()
 
 def evaluate_quantum_combination(selected, advanced_features):
@@ -413,7 +446,7 @@ def evaluate_quantum_combination(selected, advanced_features):
         
         # 연관성 점수
         associations = advanced_features.get('associations', {})
-        association_score = 0
+        association_score = 0.0
         for i in range(len(selected)):
             for j in range(i+1, len(selected)):
                 num1, num2 = selected[i], selected[j]
@@ -422,10 +455,11 @@ def evaluate_quantum_combination(selected, advanced_features):
         
         score += association_score * 50
         
-        return score
+        return float(score)  # ✅ Python float 변환
         
-    except:
-        return 0
+    except Exception as e:
+        print(f"⚠️ [EVAL] 평가 오류: {str(e)[:30]}")
+        return 0.0
 
 def generate_smart_random():
     """지능형 랜덤 생성"""
@@ -445,45 +479,82 @@ def generate_smart_random():
             if num not in candidates:
                 candidates.append(num)
         
-        return sorted(candidates[:6])
+        # ✅ Python int로 확실히 변환하여 정렬
+        result = sorted([convert_to_python_int(num) for num in candidates[:6]])
+        return result
         
-    except:
+    except Exception as e:
+        print(f"⚠️ [SMART_RANDOM] 오류: {str(e)[:30]}")
         return generate_safe_fallback()
 
 def generate_safe_fallback():
     """최후 안전장치"""
     try:
-        return sorted(random.sample(range(1, 46), 6))
-    except:
+        result = sorted(random.sample(range(1, 46), 6))
+        # ✅ Python int로 확실히 변환
+        return [convert_to_python_int(num) for num in result]
+    except Exception as e:
+        print(f"⚠️ [FALLBACK] 최후 안전장치 오류: {str(e)[:30]}")
         return [7, 14, 21, 28, 35, 42]
 
 def validate_result(result):
-    """결과 유효성 검증"""
+    """결과 유효성 검증 - 강화된 타입 안전성"""
     try:
         if not isinstance(result, (list, tuple)):
+            print("⚠️ [VALIDATE] 리스트가 아님 - 안전 모드")
             return generate_safe_fallback()
         
         if len(result) != 6:
+            print(f"⚠️ [VALIDATE] 길이 오류: {len(result)} != 6")
             return generate_safe_fallback()
         
-        # 정수 변환 및 범위 확인
+        # ✅ 정수 변환 및 범위 확인 - 강화된 버전
         valid_numbers = []
         for num in result:
-            if isinstance(num, (int, float, np.number)):
-                int_num = int(num)
-                if 1 <= int_num <= 45:
-                    valid_numbers.append(int_num)
+            try:
+                if isinstance(num, (int, float, np.number)):
+                    int_num = convert_to_python_int(num)
+                    if 1 <= int_num <= 45:
+                        valid_numbers.append(int_num)
+                    else:
+                        print(f"⚠️ [VALIDATE] 범위 외: {int_num}")
+                        valid_numbers.append(random.randint(1, 45))
+                else:
+                    print(f"⚠️ [VALIDATE] 잘못된 타입: {type(num)}")
+                    valid_numbers.append(random.randint(1, 45))
+            except Exception as conv_error:
+                print(f"⚠️ [VALIDATE] 변환 오류: {conv_error}")
+                valid_numbers.append(random.randint(1, 45))
         
         if len(valid_numbers) != 6:
+            print(f"⚠️ [VALIDATE] 유효 번호 부족: {len(valid_numbers)}")
             return generate_safe_fallback()
         
-        # 중복 제거
-        if len(set(valid_numbers)) != 6:
-            return generate_safe_fallback()
+        # 중복 제거 및 채우기
+        unique_numbers = []
+        for num in valid_numbers:
+            if num not in unique_numbers:
+                unique_numbers.append(num)
         
-        return sorted(valid_numbers)
+        # 중복 제거 후 부족하면 채우기
+        while len(unique_numbers) < 6:
+            new_num = random.randint(1, 45)
+            if new_num not in unique_numbers:
+                unique_numbers.append(new_num)
         
-    except:
+        # 6개로 제한하고 정렬
+        final_result = sorted(unique_numbers[:6])
+        
+        # ✅ 최종 검증: 모두 Python int인지 확인
+        verified_result = [convert_to_python_int(num) for num in final_result]
+        
+        # 타입 확인 로그
+        print(f"🔍 [TYPE_CHECK] 결과 타입: {[type(x).__name__ for x in verified_result]}")
+        
+        return verified_result
+        
+    except Exception as e:
+        print(f"❌ [VALIDATE] 검증 실패: {str(e)[:50]}")
         return generate_safe_fallback()
 
 # 테스트 코드 (개발용)
@@ -507,5 +578,6 @@ if __name__ == "__main__":
     
     # 테스트 실행
     result = predict_numbers()
-    print(f"Strongest Universe v3.0 Result: {result}")
-    print(f"Valid: {isinstance(result, list) and len(result) == 6 and all(1 <= n <= 45 for n in result)}")
+    print(f"🌟 Strongest Universe v3.0 Result: {result}")
+    print(f"✅ Valid: {isinstance(result, list) and len(result) == 6 and all(isinstance(n, int) and 1 <= n <= 45 for n in result)}")
+    print(f"🔍 Type Check: {[type(x).__name__ for x in result]}")
